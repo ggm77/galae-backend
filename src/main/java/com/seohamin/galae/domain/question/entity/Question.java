@@ -57,6 +57,11 @@ public class Question {
     @OrderBy("sortOrder ASC, id ASC")
     private List<Perspective> perspectives = new ArrayList<>();
 
+    //질문 이미지가 바뀐 시각. null이면 이미지 없음
+    //이미지 바이트는 목록 조회 때 함께 읽히지 않도록 question_image 테이블에 따로 둔다 (QuestionImage)
+    @Column(nullable = true)
+    private LocalDateTime imageUpdatedAt;
+
     @CreationTimestamp
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -104,5 +109,14 @@ public class Question {
 
     public void updateStatus(final QuestionStatus status) {
         this.status = status;
+    }
+
+    public boolean hasImage() {
+        return imageUpdatedAt != null;
+    }
+
+    //이미지를 넣거나 바꾸면 시각을 남기고, 빼면 null
+    public void markImageUpdated(final boolean present) {
+        this.imageUpdatedAt = present ? LocalDateTime.now() : null;
     }
 }

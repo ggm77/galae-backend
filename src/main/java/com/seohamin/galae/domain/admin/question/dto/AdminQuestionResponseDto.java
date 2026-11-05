@@ -22,6 +22,8 @@ public class AdminQuestionResponseDto {
     private final String title;
     private final String body;
     private final QuestionStatus status;
+    //관리자용 이미지 주소 (공개 전 질문도 볼 수 있음, 토큰 필요). 없으면 null
+    private final String imageUrl;
     private final List<ChoiceResponseDto> choices;
     private final List<AdminPerspectiveResponseDto> perspectives;
     private final Long participantCount;
@@ -35,6 +37,9 @@ public class AdminQuestionResponseDto {
         this.title = question.getTitle();
         this.body = question.getBody();
         this.status = question.getStatus();
+        this.imageUrl = question.hasImage()
+                ? "/api/v1/admin/questions/" + question.getId() + "/image?v=" + question.getImageUpdatedAt().toEpochSecond(java.time.ZoneOffset.UTC)
+                : null;
         this.choices = question.getChoices().stream().map(ChoiceResponseDto::new).toList();
         this.perspectives = question.getPerspectives().stream().map(AdminPerspectiveResponseDto::new).toList();
         this.participantCount = participantCount;

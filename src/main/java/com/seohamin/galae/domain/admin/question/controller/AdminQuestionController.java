@@ -2,7 +2,10 @@ package com.seohamin.galae.domain.admin.question.controller;
 
 import com.seohamin.galae.domain.admin.question.dto.*;
 import com.seohamin.galae.domain.admin.question.service.AdminQuestionService;
+import com.seohamin.galae.domain.question.entity.image.QuestionImage;
 import com.seohamin.galae.domain.question.entity.perspective.PerspectiveStatus;
+import org.springframework.http.CacheControl;
+import org.springframework.http.MediaType;
 import com.seohamin.galae.global.validation.Create;
 import com.seohamin.galae.global.validation.Update;
 import jakarta.validation.Valid;
@@ -46,6 +49,16 @@ public class AdminQuestionController {
             @Validated(Update.class) @RequestBody final AdminQuestionRequestDto requestDto
     ) {
         return ResponseEntity.ok(adminQuestionService.updateQuestion(questionId, requestDto));
+    }
+
+    //질문 이미지 조회 API (공개 전 질문 포함, 관리자 페이지 미리보기용)
+    @GetMapping("/questions/{questionId}/image")
+    public ResponseEntity<byte[]> getImage(@PathVariable("questionId") final String questionId) {
+        final QuestionImage image = adminQuestionService.getImage(questionId);
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType(image.getContentType()))
+                .cacheControl(CacheControl.noStore())
+                .body(image.getData());
     }
 
     //해설 등록 API (DRAFT)

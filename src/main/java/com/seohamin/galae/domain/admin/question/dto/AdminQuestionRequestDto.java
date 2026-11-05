@@ -37,6 +37,10 @@ public class AdminQuestionRequestDto {
     //없으면 DRAFT로 등록
     private QuestionStatus status;
 
+    //질문 이미지 data URL (data:image/jpeg|png|webp;base64,...), 1MB 이하
+    //null이면 그대로, 빈 문자열이면 이미지 삭제
+    private String image;
+
     @NotNull(groups = Create.class)
     @Size(min = 2, max = 3, groups = {Create.class, Update.class})
     @Valid

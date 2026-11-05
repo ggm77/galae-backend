@@ -1,12 +1,16 @@
 package com.seohamin.galae.domain.question.controller;
 
 import com.seohamin.galae.domain.question.dto.*;
+import com.seohamin.galae.domain.question.entity.image.QuestionImage;
 import com.seohamin.galae.domain.question.service.QuestionService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.CacheControl;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.Duration;
 import java.util.List;
 
 @RestController
@@ -62,6 +66,16 @@ public class QuestionController {
             @RequestParam(value = "size", defaultValue = "20") final int size
     ) {
         return ResponseEntity.ok(questionService.getOpinions(questionId, choiceId, userId, page, size));
+    }
+
+    //질문 이미지 API (공개된 질문만, 인증 없이 - img 태그용)
+    @GetMapping("/questions/{questionId}/image")
+    public ResponseEntity<byte[]> getImage(@PathVariable("questionId") final String questionId) {
+        final QuestionImage image = questionService.getImage(questionId);
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType(image.getContentType()))
+                .cacheControl(CacheControl.maxAge(Duration.ofDays(30)).cachePublic())
+                .body(image.getData());
     }
 
     //확장하기 API (내 답을 남긴 뒤에만)

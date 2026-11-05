@@ -6,6 +6,8 @@ import com.seohamin.galae.domain.question.dto.*;
 import com.seohamin.galae.domain.question.entity.Question;
 import com.seohamin.galae.domain.question.entity.QuestionStatus;
 import com.seohamin.galae.domain.question.entity.choice.Choice;
+import com.seohamin.galae.domain.question.entity.image.QuestionImage;
+import com.seohamin.galae.domain.question.repository.image.QuestionImageRepository;
 import com.seohamin.galae.domain.question.entity.perspective.PerspectiveStatus;
 import com.seohamin.galae.domain.question.repository.QuestionRepository;
 import com.seohamin.galae.domain.question.repository.perspective.PerspectiveRepository;
@@ -35,6 +37,7 @@ public class QuestionService {
     private static final int MAX_OPINION_PAGE_SIZE = 50;
 
     private final QuestionRepository questionRepository;
+    private final QuestionImageRepository questionImageRepository;
     private final PerspectiveRepository perspectiveRepository;
     private final AnswerRepository answerRepository;
     private final TimeProvider timeProvider;
@@ -185,6 +188,15 @@ public class QuestionService {
                 questionId,
                 perspectiveRepository.findAllByQuestionIdAndStatusOrderBySortOrderAscIdAsc(questionId, PerspectiveStatus.APPROVED)
         );
+    }
+
+    /**
+     * 질문 이미지 (공개된 질문만. img 태그로 불러오므로 인증 없이)
+     */
+    public QuestionImage getImage(final String questionId) {
+        getVisibleQuestion(questionId);
+        return questionImageRepository.findById(questionId)
+                .orElseThrow(() -> new CustomException(ExceptionCode.PHOTO_NOT_EXIST));
     }
 
     private QuestionResponseDto toDetail(final Question question, final Long userId) {

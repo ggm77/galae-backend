@@ -61,7 +61,7 @@ public class WebSecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/admin", "/admin/", "/admin/**").permitAll()
 
                         //사진은 <img> 태그로 불러오므로 토큰 없이 조회 가능
-                        .requestMatchers(HttpMethod.GET, "/api/v1/users/*/photo", "/api/v1/groups/*/photo").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/users/*/photo", "/api/v1/groups/*/photo", "/api/v1/questions/*/image").permitAll()
 
                         //어드민 API는 어드민만 사용가능
                         .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")

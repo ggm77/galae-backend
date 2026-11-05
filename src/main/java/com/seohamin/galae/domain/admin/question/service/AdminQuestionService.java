@@ -5,6 +5,9 @@ import com.seohamin.galae.domain.answer.repository.AnswerRepository;
 import com.seohamin.galae.domain.question.entity.Question;
 import com.seohamin.galae.domain.question.entity.QuestionStatus;
 import com.seohamin.galae.domain.question.entity.choice.Choice;
+import com.seohamin.galae.domain.question.entity.image.QuestionImage;
+import com.seohamin.galae.domain.question.repository.image.QuestionImageRepository;
+import com.seohamin.galae.global.util.ImageUtil;
 import com.seohamin.galae.domain.question.entity.perspective.Perspective;
 import com.seohamin.galae.domain.question.entity.perspective.PerspectiveStatus;
 import com.seohamin.galae.domain.question.repository.QuestionRepository;
@@ -28,7 +31,11 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class AdminQuestionService {
 
+    //질문 이미지 최대 크기 (관리자 페이지에서 1080px로 줄여 올린다)
+    public static final int MAX_IMAGE_BYTES = 1024 * 1024;
+
     private final QuestionRepository questionRepository;
+    private final QuestionImageRepository questionImageRepository;
     private final PerspectiveRepository perspectiveRepository;
     private final AnswerRepository answerRepository;
     private final EntityManager entityManager;
@@ -64,7 +71,12 @@ public class AdminQuestionService {
                 .build();
         addChoices(question, requestDto.getChoices());
 
-        return toResponse(questionRepository.save(question));
+        final Question saved = questionRepository.save(question);
+
+        // 3) 이미지 (선택)
+        applyImage(saved, requestDto.getImage());
+
+        return toResponse(saved);
     }
 
     /**
@@ -95,7 +107,40 @@ public class AdminQuestionService {
             addChoices(question, requestDto.getChoices());
         }
 
+        applyImage(question, requestDto.getImage());
+
         return toResponse(question);
+    }
+
+    /**
+     * 질문 이미지 (공개 전 질문도 볼 수 있는 관리자용)
+     */
+    @Transactional(readOnly = true)
+    public QuestionImage getImage(final String questionId) {
+        findQuestion(questionId);
+        return questionImageRepository.findById(questionId)
+                .orElseThrow(() -> new CustomException(ExceptionCode.PHOTO_NOT_EXIST));
+    }
+
+    /**
+     * null이면 그대로, 빈 문자열이면 삭제, data URL이면 넣거나 바꾼다
+     */
+    private void applyImage(final Question question, final String image) {
+        if (image == null) {
+            return;
+        }
+        if (image.isEmpty()) {
+            questionImageRepository.findById(question.getId()).ifPresent(questionImageRepository::delete);
+            question.markImageUpdated(false);
+            return;
+        }
+
+        final ImageUtil.DecodedImage decoded = ImageUtil.decode(image, MAX_IMAGE_BYTES);
+        questionImageRepository.findById(question.getId()).ifPresentOrElse(
+                existing -> existing.update(decoded.bytes(), decoded.contentType()),
+                () -> questionImageRepository.save(new QuestionImage(question, decoded.bytes(), decoded.contentType()))
+        );
+        question.markImageUpdated(true);
     }
 
     /**

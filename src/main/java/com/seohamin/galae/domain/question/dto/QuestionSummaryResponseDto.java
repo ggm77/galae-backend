@@ -17,6 +17,8 @@ public class QuestionSummaryResponseDto {
     private final String title;
     private final String body;
     private final Long participantCount;
+    //질문 이미지. 없으면 null
+    private final String imageUrl;
     //아직 답하지 않았으면 null
     private final MyAnswerStatus myAnswer;
 
@@ -26,6 +28,7 @@ public class QuestionSummaryResponseDto {
         this.title = question.getTitle();
         this.body = question.getBody();
         this.participantCount = participantCount;
+        this.imageUrl = QuestionResponseDto.imageUrlOf(question);
         this.myAnswer = answer == null ? null : new MyAnswerStatus(answer);
     }
 
