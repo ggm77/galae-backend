@@ -134,7 +134,7 @@ galae:
 | 그룹 | `GET·POST /groups`, `POST /groups/join` | 내 그룹(오늘 나눈 멤버 포함), 만들기, 초대 코드 참여 |
 | | `GET·PATCH /groups/{id}` | 상세(초대 코드·멤버), 설정(그룹장) |
 | | `DELETE /groups/{id}/members/me`, `DELETE /groups/{id}/members/{userId}` | 나가기, 내보내기(그룹장) |
-| | `GET·POST /groups/{id}/questions/{questionId}/messages` | 질문별 그룹 대화 (답하기 전 `locked`) |
+| | `GET·POST /groups/{id}/questions/{questionId}/messages?after=` | 질문별 그룹 대화 (답하기 전 `locked`). `after`=이전 응답의 `lastMessageId`로 새 메시지만 받는 증분 폴링 |
 | 생각 | `GET /feed`, `GET /feed/topics/{id}` | 오늘의 5개 주제, 주제 하나 |
 | | `GET·POST /feed/topics/{id}/comments` | 댓글 목록(답글 묶음), 댓글·답글 `{text, parentId}` |
 | | `PUT·DELETE /comments/{id}/like` | 공감, 공감 취소 |

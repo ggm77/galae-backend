@@ -516,9 +516,13 @@ http://localhost:8080/api/v1
 
 ### 7.1 질문별 대화 조회 🔑
 
-`GET /groups/{groupId}/questions/{questionId}/messages`
+`GET /groups/{groupId}/questions/{questionId}/messages?after=40`
 
-오래된 순입니다.
+메시지 ID 순(오래된 순)입니다. 실시간 연결 대신 **증분 폴링**으로 새 메시지를 받습니다.
+
+| 쿼리 | 기본값 | 규칙 |
+| --- | --- | --- |
+| `after` | 없음(전체) | 0 이상. 이 메시지 ID보다 **새로운** 메시지만 줍니다. 이전 응답의 `lastMessageId`를 넣습니다 |
 
 ```json
 {
@@ -526,6 +530,7 @@ http://localhost:8080/api/v1
   "questionId": "q037",
   "locked": false,
   "sharedMemberCount": 2,
+  "lastMessageId": 42,
   "messages": [
     {
       "id": 41,
@@ -553,10 +558,25 @@ http://localhost:8080/api/v1
 
 - `locked`: 내가 이 질문에 아직 답하지 않았으면 `true`. 이때 **남의 메시지**는 `choiceId`·`choiceShortText`·`text`가 `null`입니다(작성자·시각은 보임). 프론트는 흐리게 보여 주고 답하기 버튼을 띄웁니다.
 - `share`: 나누기로 올라간 메시지(선택·이유)면 `true`. 일반 메시지는 `choiceId`가 항상 `null`.
-- `sharedMemberCount`: 이 질문을 이 그룹에 나눈 멤버 수.
+- `sharedMemberCount`: 이 질문을 이 그룹에 나눈 멤버 수. `after`와 상관없이 전체 기준입니다.
+- `lastMessageId`: 다음 폴링의 `after`에 넣을 값. 이번에 받은 마지막 메시지 ID이고, 새 메시지가 없으면 보낸 `after` 그대로, 메시지가 하나도 없으면 `0`입니다.
+
+#### 증분 폴링 사용법
+
+```text
+1. 대화 화면을 열면 after 없이 호출 → 전체 메시지, lastMessageId 저장
+2. 화면이 열려 있는 동안 몇 초마다 ?after={lastMessageId} 호출
+   → 새 메시지만 받아 목록 뒤에 붙이고 lastMessageId 갱신
+3. 화면을 떠나면 폴링을 멈춤
+```
+
+- **`locked`가 `true`에서 `false`로 바뀌면**(내가 답한 뒤) `after` 없이 한 번 다시 불러야 합니다. 이미 받은 남의 메시지는 내용이 `null`인 채로 받았기 때문입니다.
+- 증분 응답에는 **새 메시지만** 옵니다. 누가 그룹을 나가거나 내보내져 그 사람의 메시지가 지워져도 폴링으로는 알 수 없으므로, 필요하면 `after` 없이 다시 불러 목록을 바꿉니다.
+- 가입 여부는 매 요청마다 확인합니다. 그룹을 나가거나 내보내지면 다음 폴링부터 `403 GROUP_NOT_JOINED`입니다.
 
 | 에러 | 상황 |
 | --- | --- |
+| `400 INVALID_REQUEST` | `after`가 음수이거나 숫자가 아님 |
 | `404 GROUP_NOT_EXIST` / `403 GROUP_NOT_JOINED` | 그룹 확인 실패 |
 | `404 QUESTION_NOT_EXIST` | 보이지 않는 질문 |
 
