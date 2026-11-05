@@ -287,12 +287,12 @@ http://localhost:8080/api/v1
 {
   "questionId": "q037",
   "perspectives": [
-    { "label": "성경", "body": "…", "verse": "사랑은 오래 참고…", "ref": "고린도전서 13:4" }
+    { "label": "성경", "body": "…", "verse": "사랑은 오래 참고…", "ref": "고린도전서 13:4", "openQuestion": "내가 먼저 건넬 수 있는 말은 무엇일까요?" }
   ]
 }
 ```
 
-`verse`, `ref`는 없으면 `null`입니다.
+`verse`, `ref`, `openQuestion`은 없으면 `null`입니다. `openQuestion`은 해설 끝에 독자에게 남기는 질문 하나입니다(결론 대신 질문으로 끝냄, PLAN 5.4).
 
 ---
 
@@ -852,6 +852,7 @@ http://localhost:8080/api/v1
   "body": "…",
   "verse": "…",
   "ref": "고린도전서 13:4",
+  "openQuestion": "…",
   "sortOrder": 0,
   "model": "claude-opus-5-5",
   "promptVersion": "v1"
@@ -864,6 +865,7 @@ http://localhost:8080/api/v1
 | `body` | ✓ | 2000자 이내 |
 | `verse` |  | 500자 이내 |
 | `ref` |  | 100자 이내 |
+| `openQuestion` |  | 300자 이내. 독자에게 남기는 질문 |
 | `sortOrder` |  | 없으면 그 질문의 현재 해설 수 (맨 뒤) |
 | `model` |  | 50자 이내 (AI 파이프라인용) |
 | `promptVersion` |  | 30자 이내 |
@@ -874,7 +876,7 @@ http://localhost:8080/api/v1
 
 `PUT /admin/perspectives/{perspectiveId}`
 
-본문은 10.4와 같습니다(`label`, `body` 필수). 전체를 바꾸므로 빠진 `verse`·`ref`·`model`·`promptVersion`은 `null`이 되고, `sortOrder`만 빼면 기존 값을 유지합니다. **수정하면 다시 `DRAFT`가 되고 검수 기록(`reviewedBy`, `reviewedAt`)이 지워집니다.** 승인된 해설도 수정하는 순간 앱에서 내려갑니다. 응답: [AdminPerspective](#adminperspective)
+본문은 10.4와 같습니다(`label`, `body` 필수). 전체를 바꾸므로 빠진 `verse`·`ref`·`openQuestion`·`model`·`promptVersion`은 `null`이 되고(AI 생성 근거 `generationDetail`은 비교용으로 남김), `sortOrder`만 빼면 기존 값을 유지합니다. **수정하면 다시 `DRAFT`가 되고 검수 기록(`reviewedBy`, `reviewedAt`)이 지워집니다.** 승인된 해설도 수정하는 순간 앱에서 내려갑니다. 응답: [AdminPerspective](#adminperspective)
 
 | 에러 | 상황 |
 | --- | --- |
@@ -921,6 +923,89 @@ http://localhost:8080/api/v1
 | --- | --- |
 | `404 TOPIC_NOT_EXIST` | 없는 주제 |
 
+### 10.10 AI 설정 조회 👑
+
+`GET /admin/ai`
+
+```json
+{ "configured": true, "defaultModel": "anthropic/claude-sonnet-5.5", "promptVersion": "commentary-v1" }
+```
+
+`configured`는 서버에 비즈라우터 API 키(`bizrouter.api-key`)가 있는지입니다. 키 자체는 내려주지 않습니다.
+
+### 10.11 AI 해설 생성 👑
+
+`POST /admin/questions/{questionId}/perspectives/generate` → `201 Created`
+
+비즈라우터(OpenAI 호환 Chat Completions)로 관점 하나의 해설을 만듭니다. 관리자만 부를 수 있고 API 키는 서버에만 있습니다. 공개 전·초안 질문에도 쓸 수 있습니다.
+
+```json
+{
+  "label": "성경",
+  "valueTags": ["정직", "회복"],
+  "sources": [
+    {
+      "ref": "에베소서 4:15",
+      "text": "오직 사랑 안에서 참된 것을 하여 범사에 그에게까지 자랄찌라 그는 머리니 곧 그리스도라",
+      "note": "진실을 말하는 것과 사랑을 대립시키지 않는 구절"
+    }
+  ],
+  "model": "anthropic/claude-sonnet-5.5"
+}
+```
+
+| 필드 | 필수 | 규칙 |
+| --- | --- | --- |
+| `label` | ✓ | 관점. 20자 이내 |
+| `valueTags` | ✓ | 필수 가치 태그 2~5개, 각 20자 이내. 모델이 고르지 않고 사람이 정합니다(PLAN 5.5) |
+| `sources` |  | 인용할 수 있는 출처 최대 12개. `ref`(100자)·`text`(500자, 원문 그대로) 필수, `note`(300자) 선택. **이 목록 밖은 인용할 수 없고**, 비우면 특정 문헌 인용 없이 그 관점의 일반적 입장만 씁니다 |
+| `model` |  | 비즈라우터 모델 ID (`제공자/모델`). 없으면 기본 모델 |
+
+#### 처리 순서 (PLAN 5.3)
+
+```text
+생성 → 자기비평 1회 → 자동 검증
+  ├ 통과 → DRAFT로 저장
+  └ 실패 → 실패 사유를 덧붙여 1회 재생성 → 자기비평 → 자동 검증
+            ├ 통과 → DRAFT
+            └ 실패 → FAILED로 저장 (검수 큐에서 사유 확인)
+```
+
+- 모델 호출은 최대 4번(생성·자기비평 × 2)이라 응답까지 1~2분 걸릴 수 있습니다. 온도는 생성 0.4, 자기비평 0.3입니다.
+- **자동 검증**(PLAN 5.7): JSON으로 읽히는지, `body` 300자 이내, 금지 표현(`정답|오답|틀렸|해야 합니다|잘못된 선택`)이 없는지, 필수 가치 태그가 모두 들어갔는지, 모든 선택지에 가장 강한 논거가 있는지, 고른 출처가 모두 `sources` 목록 안에 있는지, 독자 질문이 있는지를 봅니다.
+- **인용 구절**: 모델은 출처 주소만 고릅니다. `verse`에는 입력한 `sources`의 `text`를 **글자 그대로** 붙이고 `ref`는 그 주소입니다(첫 번째로 고른 것). 모델이 구절을 요약하거나 풀어 쓸 수 없습니다(PLAN 7.1).
+- 결과는 `DRAFT`(통과) 또는 `FAILED`로만 저장됩니다. 10.7에서 승인해야 앱에 보입니다. `FAILED`도 10.5로 고치면 `DRAFT`가 됩니다.
+- `model`에는 실제로 응답한 모델, `promptVersion`에는 프롬프트 버전(`commentary-v1`)이 남습니다. 프롬프트를 바꾸면 버전이 올라가 버전별 비교(PLAN 5.8)에 씁니다.
+
+응답: [AdminPerspective](#adminperspective). `generationDetail`에 검수자용 근거가 JSON 문자열로 들어 있습니다.
+
+```json
+{
+  "promptVersion": "commentary-v1",
+  "model": "anthropic/claude-sonnet-5.5",
+  "generatedAt": "2026-11-05T16:10:02.123",
+  "requiredTags": ["정직", "회복"],
+  "allowedSources": ["에베소서 4:15"],
+  "valuesInTension": ["정직", "회복", "우정"],
+  "forEachOption": [
+    { "option": "A", "choiceId": 0, "choiceText": "바로 교수님께 알린다", "strongestCase": "…" }
+  ],
+  "sources": ["에베소서 4:15"],
+  "errors": [],
+  "attempts": [{ "attempt": 1, "errors": [] }],
+  "cost": 1.2345
+}
+```
+
+`errors`는 마지막 시도의 검증 실패 사유(통과하면 빈 배열), `cost`는 비즈라우터가 알려 준 호출 비용의 합입니다.
+
+| 에러 | 상황 |
+| --- | --- |
+| `400 INVALID_REQUEST` | 필드 규칙 위반 (가치 태그 2개 미만, 모델 ID 형식 등) |
+| `404 QUESTION_NOT_EXIST` | 없는 질문 |
+| `502 AI_REQUEST_FAILED` | 비즈라우터 오류·연결 실패·빈 응답 (`message`에 원인) |
+| `503 AI_NOT_CONFIGURED` | 서버에 API 키가 없음 |
+
 ---
 
 ## 11. 헬스체크
@@ -966,6 +1051,8 @@ http://localhost:8080/api/v1
 | 404 | `PHOTO_NOT_EXIST` | 사진이 존재하지 않습니다. |
 | 409 | `CONFLICT` | 요청이 현재 데이터와 충돌합니다. (같은 요청이 동시에 들어와 유니크 제약 위반) |
 | 500 | `INTERNAL_SERVER_ERROR` | 서버에서 오류가 발생했습니다. |
+| 502 | `AI_REQUEST_FAILED` | AI 호출에 실패했습니다. (관리자 AI 해설 생성) |
+| 503 | `AI_NOT_CONFIGURED` | AI API 키가 설정되어 있지 않습니다. |
 | 503 | `SERVICE_UNAVAILABLE` | 현재 서버를 이용할 수 없습니다. |
 
 `{questionId}`가 들어가는 사용자 API는 모두 질문이 보이지 않으면 `404 QUESTION_NOT_EXIST`, 경로 숫자 ID 형식이 틀리면 `400 INVALID_REQUEST`를 줄 수 있습니다. 각 API 표에서는 반복을 줄이려고 생략했습니다.
@@ -1102,9 +1189,11 @@ http://localhost:8080/api/v1
 | `questionId` | string | |
 | `label`, `body` | string | |
 | `verse`, `ref` | string \| null | |
+| `openQuestion` | string \| null | 독자에게 남기는 질문 |
 | `sortOrder` | int | |
-| `status` | string | `DRAFT` \| `APPROVED` \| `REJECTED` \| `FAILED` |
+| `status` | string | `DRAFT` \| `APPROVED` \| `REJECTED` \| `FAILED`(AI 자동 검증 실패) |
 | `model`, `promptVersion` | string \| null | |
+| `generationDetail` | string \| null | AI 생성 근거·검증 결과 JSON 문자열 (10.11). 사람이 쓴 해설은 `null` |
 | `reviewedBy` | long \| null | 검수한 관리자 ID |
 | `reviewedAt` | datetime \| null | |
 | `createdAt` | datetime | |
