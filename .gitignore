@@ -5,14 +5,11 @@ build/
 !**/src/main/**/build/
 !**/src/test/**/build/
 
-### Secrets ###
-# 비밀 값은 환경 변수나 아래 파일에만 둔다 (커밋 금지)
-.env
-.env.*
-!.env.example
-**/src/main/resources/application-secret.yaml
-**/src/main/resources/application-secret.yml
-**/src/main/resources/application-secret.properties
+### Config ###
+# 설정 파일에 비밀 값(DB 비밀번호, JWT 키 등)이 함께 들어가므로 커밋하지 않는다
+src/main/resources/application*.yaml
+src/main/resources/application*.yml
+src/main/resources/application*.properties
 *.pem
 *.p8
 *.p12
