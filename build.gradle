@@ -6,10 +6,17 @@ plugins {
 
 group = 'com.seohamin'
 version = '0.0.1-SNAPSHOT'
+description = 'Galae'
 
 java {
 	toolchain {
 		languageVersion = JavaLanguageVersion.of(25)
+	}
+}
+
+configurations {
+	compileOnly {
+		extendsFrom annotationProcessor
 	}
 }
 
@@ -18,15 +25,30 @@ repositories {
 }
 
 dependencies {
+	//spring
 	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
 	implementation 'org.springframework.boot:spring-boot-starter-webmvc'
+	implementation 'org.springframework.boot:spring-boot-starter-security'
+	implementation 'org.springframework.boot:spring-boot-starter-validation'
+	//JWT
+	implementation 'io.jsonwebtoken:jjwt-api:0.12.7'
+	runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.12.7'
+	runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.12.7'
+	//swagger-ui
+	implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.0'
+	//JDBC - 운영은 MariaDB, 로컬·테스트는 H2
+	runtimeOnly 'org.mariadb.jdbc:mariadb-java-client'
+	runtimeOnly 'com.h2database:h2'
+	//lombok
 	compileOnly 'org.projectlombok:lombok'
 	annotationProcessor 'org.projectlombok:lombok'
+	//test
 	testImplementation 'org.springframework.boot:spring-boot-starter-data-jpa-test'
 	testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
+	testImplementation 'org.springframework.boot:spring-boot-starter-security-test'
 	testCompileOnly 'org.projectlombok:lombok'
-	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 	testAnnotationProcessor 'org.projectlombok:lombok'
+	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
 tasks.named('test') {
