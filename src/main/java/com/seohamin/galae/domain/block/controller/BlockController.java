@@ -11,6 +11,9 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+/**
+ * 사용자 차단. 차단할 사람은 아이디(handle)로 지정한다
+ */
 @RestController
 @RequestMapping("/api/v1")
 @RequiredArgsConstructor
@@ -26,32 +29,32 @@ public class BlockController {
         return ResponseEntity.ok(blockService.getBlocks(userId));
     }
 
-    //차단 목록 전체 교체 API
+    //차단 목록 전체 교체 API (아이디 목록)
     @PutMapping("/users/me/blocks")
     public ResponseEntity<List<BlockResponseDto>> replaceBlocks(
             @AuthenticationPrincipal final Long userId,
             @Valid @RequestBody final BlockListRequestDto blockListRequestDto
     ) {
-        return ResponseEntity.ok(blockService.replaceBlocks(blockListRequestDto.getUserIds(), userId));
+        return ResponseEntity.ok(blockService.replaceBlocks(blockListRequestDto.getHandles(), userId));
     }
 
     //한 명 차단 API
-    @PutMapping("/users/me/blocks/{targetId}")
+    @PutMapping("/users/me/blocks/{handle}")
     public ResponseEntity<Void> block(
-            @PathVariable("targetId") final Long targetId,
+            @PathVariable("handle") final String handle,
             @AuthenticationPrincipal final Long userId
     ) {
-        blockService.block(targetId, userId);
+        blockService.block(handle, userId);
         return ResponseEntity.noContent().build();
     }
 
     //차단 해제 API
-    @DeleteMapping("/users/me/blocks/{targetId}")
+    @DeleteMapping("/users/me/blocks/{handle}")
     public ResponseEntity<Void> unblock(
-            @PathVariable("targetId") final Long targetId,
+            @PathVariable("handle") final String handle,
             @AuthenticationPrincipal final Long userId
     ) {
-        blockService.unblock(targetId, userId);
+        blockService.unblock(handle, userId);
         return ResponseEntity.noContent().build();
     }
 }

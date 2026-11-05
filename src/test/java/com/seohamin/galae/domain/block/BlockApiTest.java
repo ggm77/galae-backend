@@ -54,7 +54,7 @@ class BlockApiTest extends ApiTestSupport {
                 "{\"text\":\"차단될 사람의 답글\",\"parentId\":" + otherComment + "}")).get("id").asLong();
 
         // 차단
-        putJson("/api/v1/users/me/blocks/" + blocked.id(), me.token(), null).andExpect(status().isNoContent());
+        putJson("/api/v1/users/me/blocks/" + blocked.handle(), me.token(), null).andExpect(status().isNoContent());
         get("/api/v1/users/me/blocks", me.token())
                 .andExpect(jsonPath("$", hasSize(1)))
                 .andExpect(jsonPath("$[0].user.id").value(blocked.id()));
@@ -101,51 +101,78 @@ class BlockApiTest extends ApiTestSupport {
         get("/api/v1/users/me", me.token()).andExpect(jsonPath("$.blocked").value(nullValue()));
 
         // 해제하면 다시 보인다
-        delete("/api/v1/users/me/blocks/" + blocked.id(), me.token()).andExpect(status().isNoContent());
+        delete("/api/v1/users/me/blocks/" + blocked.handle(), me.token()).andExpect(status().isNoContent());
         assertThat(containsId(json(get("/api/v1/feed/topics/p005/comments", me.token())), blockedComment)).isTrue();
         assertThat(json(get(messages, me.token())).get("messages").size()).isEqualTo(3);
     }
 
     @Test
-    void 차단_목록을_통째로_받아_교체한다() throws Exception {
+    void 차단_목록을_아이디로_통째로_받아_교체한다() throws Exception {
         final TestUser me = signupUser("목록");
         final TestUser a = signupUser("가");
         final TestUser b = signupUser("나");
         final TestUser c = signupUser("다");
 
-        putJson("/api/v1/users/me/blocks", me.token(), "{\"userIds\":[" + a.id() + "," + b.id() + "]}")
+        putJson("/api/v1/users/me/blocks", me.token(), "{\"handles\":[\"" + a.handle() + "\",\"" + b.handle() + "\"]}")
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[*].user.id", containsInAnyOrder(a.id().intValue(), b.id().intValue())));
+                .andExpect(jsonPath("$[*].user.handle", containsInAnyOrder(a.handle(), b.handle())));
 
-        //b는 남기고 a는 풀고 c를 더한다 (중복은 한 번만)
-        putJson("/api/v1/users/me/blocks", me.token(), "{\"userIds\":[" + b.id() + "," + c.id() + "," + c.id() + "]}")
-                .andExpect(jsonPath("$[*].user.id", containsInAnyOrder(b.id().intValue(), c.id().intValue())));
+        //b는 남기고 a는 풀고 c를 더한다 (중복·앞뒤 공백은 한 번으로)
+        putJson("/api/v1/users/me/blocks", me.token(), "{\"handles\":[\"" + b.handle() + "\",\"" + c.handle() + "\",\" " + c.handle() + " \"]}")
+                .andExpect(jsonPath("$[*].user.handle", containsInAnyOrder(b.handle(), c.handle())));
 
         //빈 배열이면 모두 해제
-        putJson("/api/v1/users/me/blocks", me.token(), "{\"userIds\":[]}").andExpect(jsonPath("$", hasSize(0)));
+        putJson("/api/v1/users/me/blocks", me.token(), "{\"handles\":[]}").andExpect(jsonPath("$", hasSize(0)));
 
-        //자기 자신, 없는 유저는 거절하고 목록은 그대로
-        putJson("/api/v1/users/me/blocks", me.token(), "{\"userIds\":[" + a.id() + "]}").andExpect(status().isOk());
-        putJson("/api/v1/users/me/blocks", me.token(), "{\"userIds\":[" + me.id() + "]}")
+        //자기 자신, 없는 아이디는 거절하고 목록은 그대로
+        putJson("/api/v1/users/me/blocks", me.token(), "{\"handles\":[\"" + a.handle() + "\"]}").andExpect(status().isOk());
+        putJson("/api/v1/users/me/blocks", me.token(), "{\"handles\":[\"" + me.handle() + "\"]}")
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("CANNOT_BLOCK_SELF"));
-        putJson("/api/v1/users/me/blocks", me.token(), "{\"userIds\":[" + a.id() + ",99999999]}")
+        putJson("/api/v1/users/me/blocks", me.token(), "{\"handles\":[\"" + a.handle() + "\",\"no.such.user\"]}")
                 .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.code").value("USER_NOT_EXIST"));
-        get("/api/v1/users/me/blocks", me.token()).andExpect(jsonPath("$[*].user.id", contains(a.id().intValue())));
+                .andExpect(jsonPath("$.code").value("USER_NOT_EXIST"))
+                .andExpect(jsonPath("$.message").value(containsString("no.such.user")));
+        get("/api/v1/users/me/blocks", me.token()).andExpect(jsonPath("$[*].user.handle", contains(a.handle())));
 
-        //한 명 차단은 여러 번 해도 한 번
-        putJson("/api/v1/users/me/blocks/" + b.id(), me.token(), null).andExpect(status().isNoContent());
-        putJson("/api/v1/users/me/blocks/" + b.id(), me.token(), null).andExpect(status().isNoContent());
+        //한 명 차단은 여러 번 해도 한 번, 없는 아이디는 404
+        putJson("/api/v1/users/me/blocks/" + b.handle(), me.token(), null).andExpect(status().isNoContent());
+        putJson("/api/v1/users/me/blocks/" + b.handle(), me.token(), null).andExpect(status().isNoContent());
         get("/api/v1/users/me/blocks", me.token()).andExpect(jsonPath("$", hasSize(2)));
+        putJson("/api/v1/users/me/blocks/no.such.user", me.token(), null).andExpect(status().isNotFound());
+        delete("/api/v1/users/me/blocks/no.such.user", me.token()).andExpect(status().isNotFound());
+        putJson("/api/v1/users/me/blocks/" + me.handle(), me.token(), null).andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void 상대가_아이디를_바꿔도_차단은_유지되고_마침표가_있는_아이디도_된다() throws Exception {
+        final TestUser me = signupUser("나");
+        final TestUser target = signupUser("바꿀");
+        final String dotted = "dot." + target.handle().substring(1, 12);
+        patchJson("/api/v1/users/me", target.token(), "{\"handle\":\"" + dotted + "\"}").andExpect(status().isOk());
+
+        //마침표가 들어간 아이디를 경로에 그대로 쓴다
+        putJson("/api/v1/users/me/blocks/" + dotted, me.token(), null).andExpect(status().isNoContent());
+
+        //차단한 뒤 상대가 아이디를 또 바꿔도 차단은 유지되고, 목록에는 새 아이디가 보인다
+        final String renamed = "re_" + target.handle().substring(1, 12);
+        patchJson("/api/v1/users/me", target.token(), "{\"handle\":\"" + renamed + "\"}").andExpect(status().isOk());
+        get("/api/v1/users/me/blocks", me.token())
+                .andExpect(jsonPath("$[*].user.handle", contains(renamed)));
+        get("/api/v1/users/" + target.id(), me.token()).andExpect(jsonPath("$.blocked").value(true));
+
+        //예전 아이디로는 해제할 수 없고, 새 아이디로 해제한다
+        delete("/api/v1/users/me/blocks/" + dotted, me.token()).andExpect(status().isNotFound());
+        delete("/api/v1/users/me/blocks/" + renamed, me.token()).andExpect(status().isNoContent());
+        get("/api/v1/users/me/blocks", me.token()).andExpect(jsonPath("$", hasSize(0)));
     }
 
     @Test
     void 탈퇴하면_차단_기록도_사라진다() throws Exception {
         final TestUser me = signupUser("남는");
         final TestUser leaving = signupUser("떠나는");
-        putJson("/api/v1/users/me/blocks/" + leaving.id(), me.token(), null).andExpect(status().isNoContent());
-        putJson("/api/v1/users/me/blocks/" + me.id(), leaving.token(), null).andExpect(status().isNoContent());
+        putJson("/api/v1/users/me/blocks/" + leaving.handle(), me.token(), null).andExpect(status().isNoContent());
+        putJson("/api/v1/users/me/blocks/" + me.handle(), leaving.token(), null).andExpect(status().isNoContent());
 
         mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete("/api/v1/users/me")
                         .header("Authorization", "Bearer " + leaving.token())
