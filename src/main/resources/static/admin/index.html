@@ -1,0 +1,673 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>갈래 관리자</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  /* 색은 갈래 디자인(docs/PLAN.md 8.2)을 따른다. 그림자는 쓰지 않는다 */
+  :root {
+    --bg: #FDFDFC;
+    --text: #33322F;
+    --sub: #6B6A64;
+    --hint: #77756F;
+    --faint: #B4B2A9;
+    --line: #EDEBE6;
+    --selected-bg: #F4F9FD;
+    --selected-line: #C3D9EC;
+    --selected-text: #2B4A63;
+    --button-bg: #EAF2F9;
+    --button-text: #2B4A63;
+    --accent: #A9C8E4;
+    --bar: #F2F1EC;
+    --warn-bg: #FBF3E8;
+    --warn-text: #8A5A1F;
+    --bad-bg: #FBEDEC;
+    --bad-text: #8E3B35;
+    --ok-bg: #EEF6EF;
+    --ok-text: #2F5E38;
+    --radius: 10px;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font: 15px/1.6 "Pretendard", -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  }
+  h1, h2, h3 { font-family: "Gowun Batang", serif; font-weight: 700; margin: 0; }
+  h1 { font-size: 20px; }
+  h2 { font-size: 18px; }
+  h3 { font-size: 16px; }
+  a { color: var(--selected-text); }
+  button, input, select, textarea { font: inherit; color: inherit; }
+
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 0 16px; }
+  header.top { border-bottom: 1px solid var(--line); background: var(--bg); position: sticky; top: 0; z-index: 5; }
+  header.top .wrap { display: flex; align-items: center; gap: 24px; min-height: 60px; flex-wrap: wrap; }
+  .brand { display: flex; align-items: baseline; gap: 8px; }
+  .brand small { color: var(--hint); font-size: 13px; }
+  nav.tabs { display: flex; gap: 4px; flex: 1; flex-wrap: wrap; }
+  nav.tabs button { border: 0; background: none; padding: 8px 12px; border-radius: 8px; cursor: pointer; color: var(--sub); min-height: 40px; }
+  nav.tabs button[aria-current="page"] { background: var(--selected-bg); color: var(--selected-text); }
+  .who { color: var(--hint); font-size: 13px; display: flex; gap: 10px; align-items: center; }
+
+  main { padding: 24px 0 64px; }
+  .btn { border: 1px solid transparent; background: var(--button-bg); color: var(--button-text); padding: 8px 14px; border-radius: 8px; cursor: pointer; min-height: 40px; transition: background .12s; }
+  .btn:hover { background: #DDEAF5; }
+  .btn:disabled { opacity: .5; cursor: default; }
+  .btn.plain { background: none; border-color: var(--line); color: var(--sub); }
+  .btn.plain:hover { background: var(--bar); }
+  .btn.ok { background: var(--ok-bg); color: var(--ok-text); }
+  .btn.bad { background: var(--bad-bg); color: var(--bad-text); }
+  .btn.small { padding: 4px 10px; min-height: 32px; font-size: 13px; }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .spacer { flex: 1; }
+  .muted { color: var(--hint); }
+  .small { font-size: 13px; }
+
+  .card { border: 1px solid var(--line); border-radius: var(--radius); background: #fff; padding: 16px; }
+  .stack > * + * { margin-top: 12px; }
+  .grid { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+  @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+
+  label.field { display: block; }
+  label.field > span { display: block; font-size: 13px; color: var(--sub); margin-bottom: 4px; }
+  input[type=text], input[type=password], input[type=date], input[type=number], select, textarea {
+    width: 100%; border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; background: #fff; min-height: 40px;
+  }
+  input:focus, select:focus, textarea:focus { outline: none; border-color: var(--selected-line); background: var(--selected-bg); }
+  input:disabled, textarea:disabled { background: var(--bar); color: var(--hint); }
+  textarea { resize: vertical; min-height: 80px; }
+  .fields-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .fields-3 { display: grid; grid-template-columns: 1.2fr 1fr 1fr; gap: 10px; }
+  @media (max-width: 560px) { .fields-2, .fields-3 { grid-template-columns: 1fr; } }
+
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-size: 13px; color: var(--hint); font-weight: 500; }
+  tbody tr { cursor: pointer; }
+  tbody tr:hover { background: var(--bar); }
+  tbody tr.selected { background: var(--selected-bg); }
+  .table-wrap { overflow-x: auto; }
+
+  .badge { display: inline-block; font-size: 12px; padding: 1px 8px; border-radius: 999px; background: var(--bar); color: var(--sub); white-space: nowrap; }
+  .badge.PUBLISHED, .badge.APPROVED, .badge.checked { background: var(--ok-bg); color: var(--ok-text); }
+  .badge.DRAFT, .badge.pending { background: var(--selected-bg); color: var(--selected-text); }
+  .badge.REJECTED, .badge.FAILED { background: var(--bad-bg); color: var(--bad-text); }
+  .badge.warn { background: var(--warn-bg); color: var(--warn-text); }
+
+  .bar { height: 6px; background: var(--bar); border-radius: 3px; overflow: hidden; width: 80px; display: inline-block; vertical-align: middle; }
+  .bar > i { display: block; height: 100%; background: var(--accent); }
+  .bar.over > i { background: #E2B57A; }
+
+  .perspective { border: 1px solid var(--line); border-radius: var(--radius); padding: 14px; background: #fff; }
+  .perspective .verse { font-family: "Gowun Batang", serif; border-left: 2px solid var(--accent); padding-left: 10px; margin: 8px 0 0; }
+  .perspective .body { white-space: pre-wrap; margin: 8px 0 0; }
+  .checks { margin-top: 10px; font-size: 13px; display: flex; gap: 6px; flex-wrap: wrap; }
+  mark { background: var(--warn-bg); color: var(--warn-text); padding: 0 2px; border-radius: 3px; }
+
+  .cards { margin: 8px 0 0; padding-left: 20px; }
+  .cards li + li { margin-top: 4px; }
+
+  .login { max-width: 360px; margin: 12vh auto 0; }
+  .login h1 { font-size: 24px; margin-bottom: 4px; }
+
+  #toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); max-width: calc(100% - 32px); z-index: 20; }
+  #toast div { background: var(--text); color: #fff; padding: 10px 16px; border-radius: 8px; margin-top: 8px; font-size: 14px; }
+  #toast div.error { background: var(--bad-text); }
+  .empty { padding: 32px 0; text-align: center; color: var(--hint); }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<header class="top" id="top" hidden>
+  <div class="wrap">
+    <div class="brand"><h1>갈래</h1><small>관리자</small></div>
+    <nav class="tabs" aria-label="관리 메뉴">
+      <button type="button" data-tab="questions">질문</button>
+      <button type="button" data-tab="review">해설 검수</button>
+      <button type="button" data-tab="topics">생각 주제</button>
+    </nav>
+    <div class="who"><span id="who"></span><button type="button" class="btn plain small" id="logout">로그아웃</button></div>
+  </div>
+</header>
+<main class="wrap" id="app"></main>
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script>
+'use strict';
+
+/* ---------- 기본 도구 ---------- */
+
+const API = '/api/v1';
+const STORE = { access: 'galae.admin.access', refresh: 'galae.admin.refresh' };
+const LABELS = ['성경', '철학', '불교', '오늘의 연구'];
+// docs/PLAN.md 5.7 자동 검증의 금지어와 길이 제한
+const FORBIDDEN = /(정답|오답|틀렸|해야 합니다|잘못된 선택)/g;
+const MAX_BODY = 300;
+
+const store = {
+  get(key) { try { return sessionStorage.getItem(key); } catch { return null; } },
+  set(key, value) { try { value == null ? sessionStorage.removeItem(key) : sessionStorage.setItem(key, value); } catch { /* 저장 못 하면 새로고침 때 다시 로그인 */ } },
+};
+
+// 사용자 입력은 모두 textContent로 넣는다 (innerHTML 사용 안 함)
+function h(tag, props, ...children) {
+  const el = document.createElement(tag);
+  for (const [key, value] of Object.entries(props || {})) {
+    if (value == null || value === false) continue;
+    if (key === 'class') el.className = value;
+    else if (key.startsWith('on')) el.addEventListener(key.slice(2), value);
+    else if (key === 'value') el.value = value;
+    else el.setAttribute(key, value === true ? '' : value);
+  }
+  for (const child of children.flat(Infinity)) {
+    if (child == null || child === false) continue;
+    el.append(child instanceof Node ? child : String(child));
+  }
+  return el;
+}
+
+// replaceChildren은 null을 "null" 글자로 넣으므로 비어 있는 자식을 걸러서 넣는다
+function fill(el, ...children) {
+  el.replaceChildren(...children.flat(Infinity).filter(c => c != null && c !== false));
+}
+
+function toast(message, isError) {
+  const item = h('div', { class: isError ? 'error' : '' }, message);
+  document.getElementById('toast').append(item);
+  setTimeout(() => item.remove(), isError ? 5000 : 2500);
+}
+
+const today = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+
+class ApiError extends Error {
+  constructor(status, code, message) { super(message); this.status = status; this.code = code; }
+}
+
+let auth = { access: store.get(STORE.access), refresh: store.get(STORE.refresh) };
+
+function saveAuth(token) {
+  auth = token ? { access: token.accessToken, refresh: token.refreshToken } : { access: null, refresh: null };
+  store.set(STORE.access, auth.access);
+  store.set(STORE.refresh, auth.refresh);
+}
+
+async function request(method, path, body, retry = true) {
+  const headers = { 'Accept': 'application/json' };
+  if (body !== undefined) headers['Content-Type'] = 'application/json';
+  if (auth.access) headers['Authorization'] = `Bearer ${auth.access}`;
+
+  const res = await fetch(API + path, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) });
+
+  // 액세스 토큰이 만료되면 한 번만 갱신해서 다시 시도
+  if (res.status === 401 && retry && auth.refresh) {
+    const refreshed = await fetch(`${API}/auth/token/refresh`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ refreshToken: auth.refresh }),
+    });
+    if (refreshed.ok) {
+      saveAuth(await refreshed.json());
+      return request(method, path, body, false);
+    }
+  }
+
+  const text = await res.text();
+  const data = text ? JSON.parse(text) : null;
+  if (!res.ok) {
+    if (res.status === 401) { saveAuth(null); showLogin('다시 로그인해 주세요.'); }
+    throw new ApiError(res.status, data?.code, data?.message || `요청에 실패했습니다 (${res.status})`);
+  }
+  return data;
+}
+
+const api = {
+  get: path => request('GET', path),
+  post: (path, body) => request('POST', path, body ?? {}),
+  put: (path, body) => request('PUT', path, body ?? {}),
+  patch: (path, body) => request('PATCH', path, body ?? {}),
+};
+
+// 버튼을 누르는 동안 비활성화하고, 실패하면 서버 메시지를 띄운다
+async function run(button, task, success) {
+  if (button) button.disabled = true;
+  try {
+    const result = await task();
+    if (success) toast(success);
+    return result;
+  } catch (e) {
+    if (!(e instanceof ApiError && e.status === 401)) toast(e.message, true);
+    return undefined;
+  } finally {
+    if (button) button.disabled = false;
+  }
+}
+
+/* ---------- 상태 ---------- */
+
+const state = {
+  me: null,
+  tab: 'questions',
+  questions: [],
+  selectedQuestionId: null,
+  creating: false,
+  reviewStatus: 'DRAFT',
+  perspectives: [],
+  topics: [],
+  openTopicId: null,
+};
+
+const app = document.getElementById('app');
+
+/* ---------- 로그인 ---------- */
+
+function showLogin(message) {
+  document.getElementById('top').hidden = true;
+  const handle = h('input', { type: 'text', name: 'handle', autocomplete: 'username', required: true });
+  const password = h('input', { type: 'password', name: 'password', autocomplete: 'current-password', required: true });
+  const submit = h('button', { class: 'btn', type: 'submit' }, '로그인');
+
+  const form = h('form', {
+    class: 'card stack',
+    onsubmit: async e => {
+      e.preventDefault();
+      const ok = await run(submit, async () => {
+        saveAuth(await request('POST', '/auth/login', { handle: handle.value.trim(), password: password.value }, false));
+        return true;
+      });
+      if (ok) start();
+    },
+  },
+    h('label', { class: 'field' }, h('span', null, '아이디'), handle),
+    h('label', { class: 'field' }, h('span', null, '비밀번호'), password),
+    submit,
+  );
+
+  fill(app, h('section', { class: 'login stack' },
+    h('div', null, h('h1', null, '갈래 관리자'), h('p', { class: 'muted small' }, '관리자 계정으로 로그인합니다.')),
+    message ? h('p', { class: 'badge warn' }, message) : null,
+    form,
+  ));
+  handle.focus();
+}
+
+async function start() {
+  if (!auth.access) return showLogin();
+  try {
+    state.me = await api.get('/users/me');
+  } catch {
+    return;
+  }
+  if (state.me.role !== 'ADMIN') {
+    saveAuth(null);
+    return showLogin('관리자 권한이 없는 계정입니다.');
+  }
+  document.getElementById('top').hidden = false;
+  document.getElementById('who').textContent = `${state.me.name} (${state.me.handle})`;
+  const hash = location.hash.slice(1);
+  switchTab(['questions', 'review', 'topics'].includes(hash) ? hash : 'questions');
+}
+
+document.getElementById('logout').addEventListener('click', () => { saveAuth(null); showLogin(); });
+document.querySelectorAll('nav.tabs button').forEach(b => b.addEventListener('click', () => switchTab(b.dataset.tab)));
+
+async function switchTab(tab) {
+  state.tab = tab;
+  history.replaceState(null, '', `#${tab}`);
+  document.querySelectorAll('nav.tabs button').forEach(b => {
+    if (b.dataset.tab === tab) b.setAttribute('aria-current', 'page');
+    else b.removeAttribute('aria-current');
+  });
+  fill(app, h('p', { class: 'empty' }, '불러오는 중…'));
+  if (tab === 'questions') await loadQuestions();
+  if (tab === 'review') await loadReview();
+  if (tab === 'topics') await loadTopics();
+}
+
+/* ---------- 질문 ---------- */
+
+async function loadQuestions() {
+  const list = await run(null, () => api.get('/admin/questions'));
+  if (!list) return;
+  state.questions = list;
+  renderQuestions();
+}
+
+function renderQuestions() {
+  const selected = state.questions.find(q => q.id === state.selectedQuestionId);
+  const editor = state.creating ? questionEditor(null) : selected ? questionEditor(selected) : h('div', { class: 'card empty' }, '왼쪽에서 질문을 고르거나 새 질문을 만드세요.');
+
+  fill(app,
+    h('div', { class: 'row', style: 'margin-bottom:16px' },
+      h('h2', null, '질문'),
+      h('span', { class: 'muted small' }, `${state.questions.length}개 · 하루에 질문 하나, 선택지는 3개 이하`),
+      h('span', { class: 'spacer' }),
+      h('button', { class: 'btn', type: 'button', onclick: () => { state.creating = true; state.selectedQuestionId = null; renderQuestions(); } }, '새 질문'),
+    ),
+    h('div', { class: 'grid' },
+      h('div', { class: 'card table-wrap' }, questionTable()),
+      h('div', null, editor),
+    ),
+  );
+}
+
+function questionTable() {
+  if (!state.questions.length) return h('p', { class: 'empty' }, '질문이 없습니다.');
+  const now = today();
+  return h('table', null,
+    h('thead', null, h('tr', null, ['날짜', '질문', '상태', '참여', '최다 선택', '해설'].map(t => h('th', null, t)))),
+    h('tbody', null, state.questions.map(q => {
+      const counts = q.perspectives.reduce((m, p) => ({ ...m, [p.status]: (m[p.status] || 0) + 1 }), {});
+      return h('tr', {
+        class: q.id === state.selectedQuestionId ? 'selected' : '',
+        onclick: () => { state.creating = false; state.selectedQuestionId = q.id; renderQuestions(); },
+      },
+        h('td', { class: 'small' }, q.date, q.date > now ? h('div', { class: 'muted' }, '공개 전') : null),
+        h('td', null, h('div', null, q.title), h('div', { class: 'muted small' }, q.id)),
+        h('td', null, h('span', { class: `badge ${q.status}` }, q.status === 'PUBLISHED' ? '공개' : '초안')),
+        h('td', { class: 'small' }, q.participantCount),
+        h('td', { class: 'small' },
+          h('span', { class: `bar ${q.needsReview ? 'over' : ''}` }, h('i', { style: `width:${q.maxChoicePct}%` })), ' ', `${q.maxChoicePct}%`,
+          q.needsReview ? h('div', null, h('span', { class: 'badge warn' }, '80% 초과 · 재검토')) : null,
+        ),
+        h('td', { class: 'small' },
+          counts.APPROVED ? h('span', { class: 'badge APPROVED' }, `승인 ${counts.APPROVED}`) : null, ' ',
+          counts.DRAFT ? h('span', { class: 'badge DRAFT' }, `대기 ${counts.DRAFT}`) : null,
+          !q.perspectives.length ? h('span', { class: 'muted' }, '없음') : null,
+        ),
+      );
+    })),
+  );
+}
+
+function choiceRows(choices, disabled) {
+  const box = h('div', { class: 'stack' });
+  const addRow = (choice = { text: '', shortText: '' }) => {
+    const row = h('div', { class: 'fields-3', 'data-choice': '' },
+      h('input', { type: 'text', placeholder: '선택지 문장', value: choice.text, maxlength: 200, disabled, 'data-k': 'text' }),
+      h('input', { type: 'text', placeholder: '짧은 문장 (결과·공유)', value: choice.shortText, maxlength: 50, disabled, 'data-k': 'shortText' }),
+      h('button', { class: 'btn plain small', type: 'button', disabled, onclick: () => { if (box.querySelectorAll('[data-choice]').length > 2) row.remove(); else toast('선택지는 2개 이상이어야 합니다.', true); } }, '빼기'),
+    );
+    box.append(row);
+  };
+  (choices.length ? choices : [{}, {}]).forEach(addRow);
+  const add = h('button', { class: 'btn plain small', type: 'button', disabled, onclick: () => { if (box.querySelectorAll('[data-choice]').length < 3) addRow(); else toast('선택지는 3개를 넘지 않습니다.', true); } }, '선택지 더하기');
+  return {
+    el: h('div', { class: 'stack' }, box, add),
+    read: () => [...box.querySelectorAll('[data-choice]')].map(r => ({
+      text: r.querySelector('[data-k=text]').value.trim(),
+      shortText: r.querySelector('[data-k=shortText]').value.trim(),
+    })),
+  };
+}
+
+function questionEditor(question) {
+  const creating = !question;
+  const locked = !creating && question.participantCount > 0;
+  const id = h('input', { type: 'text', value: question?.id ?? '', placeholder: '예: q038', pattern: '[a-z0-9_-]{1,20}', disabled: !creating, required: true });
+  const date = h('input', { type: 'date', value: question?.date ?? today(), required: true });
+  const status = h('select', null,
+    h('option', { value: 'DRAFT', selected: question?.status !== 'PUBLISHED' }, '초안 (사용자에게 안 보임)'),
+    h('option', { value: 'PUBLISHED', selected: question?.status === 'PUBLISHED' }, '공개 (공개일부터 보임)'),
+  );
+  const title = h('input', { type: 'text', value: question?.title ?? '', maxlength: 100, required: true });
+  const body = h('textarea', { maxlength: 1000, required: true, rows: 4 }, question?.body ?? '');
+  const choices = choiceRows(question?.choices.map(c => ({ text: c.text, shortText: c.shortText })) ?? [], locked);
+  const save = h('button', { class: 'btn', type: 'submit' }, creating ? '등록' : '저장');
+
+  const form = h('form', {
+    class: 'card stack',
+    onsubmit: async e => {
+      e.preventDefault();
+      const payload = { date: date.value, title: title.value.trim(), body: body.value.trim(), status: status.value };
+      if (!locked) payload.choices = choices.read();
+      if (payload.choices && payload.choices.some(c => !c.text || !c.shortText)) return toast('선택지 문장과 짧은 문장을 모두 채워 주세요.', true);
+
+      const saved = await run(save, () => creating
+        ? api.post('/admin/questions', { id: id.value.trim(), ...payload })
+        : api.patch(`/admin/questions/${encodeURIComponent(question.id)}`, payload), creating ? '질문을 등록했습니다.' : '저장했습니다.');
+      if (saved) {
+        state.creating = false;
+        state.selectedQuestionId = saved.id;
+        await loadQuestions();
+      }
+    },
+  },
+    h('div', { class: 'row' }, h('h3', null, creating ? '새 질문' : '질문 수정'), h('span', { class: 'spacer' }),
+      !creating ? h('span', { class: 'muted small' }, `참여 ${question.participantCount}명`) : null),
+    h('div', { class: 'fields-2' },
+      h('label', { class: 'field' }, h('span', null, 'ID (경로에 쓰임, 바꿀 수 없음)'), id),
+      h('label', { class: 'field' }, h('span', null, '공개일'), date),
+    ),
+    h('label', { class: 'field' }, h('span', null, '상태'), status),
+    h('label', { class: 'field' }, h('span', null, '제목 (100자)'), title),
+    h('label', { class: 'field' }, h('span', null, '본문 (1000자)'), body),
+    h('div', null,
+      h('div', { class: 'row', style: 'margin-bottom:6px' }, h('span', { class: 'small', style: 'color:var(--sub)' }, '선택지'),
+        locked ? h('span', { class: 'badge warn' }, '답변이 있어 선택지를 바꿀 수 없습니다') : null),
+      choices.el,
+    ),
+    h('div', { class: 'row' }, save,
+      h('button', { class: 'btn plain', type: 'button', onclick: () => { state.creating = false; state.selectedQuestionId = null; renderQuestions(); } }, '닫기')),
+  );
+
+  if (creating) return form;
+  return h('div', { class: 'stack' }, form, perspectiveSection(question));
+}
+
+/* ---------- 관점별 해설 ---------- */
+
+function perspectiveSection(question) {
+  return h('div', { class: 'card stack' },
+    h('div', { class: 'row' }, h('h3', null, '확장하기 해설'), h('span', { class: 'muted small' }, '승인한 해설만 앱에 보입니다. 고치면 다시 검수 대기가 됩니다.')),
+    question.perspectives.length
+      ? question.perspectives.map(p => perspectiveCard(p, question))
+      : h('p', { class: 'muted small' }, '아직 해설이 없습니다.'),
+    perspectiveForm(question, null),
+  );
+}
+
+// docs/PLAN.md 5.7: 길이 제한, 금지 표현을 화면에서 미리 보여 준다
+function autoChecks(p) {
+  const found = [...new Set((p.body.match(FORBIDDEN) || []))];
+  return h('div', { class: 'checks' },
+    h('span', { class: `badge ${p.body.length > MAX_BODY ? 'warn' : ''}` }, `본문 ${p.body.length}자${p.body.length > MAX_BODY ? ` · ${MAX_BODY}자 초과` : ''}`),
+    found.length ? h('span', { class: 'badge warn' }, `금지 표현: ${found.join(', ')}`) : h('span', { class: 'badge' }, '금지 표현 없음'),
+    p.label === '성경' && !p.ref ? h('span', { class: 'badge warn' }, '장절 없음') : null,
+    p.model ? h('span', { class: 'badge' }, `${p.model}${p.promptVersion ? ` · ${p.promptVersion}` : ''}`) : null,
+  );
+}
+
+// 금지 표현을 표시한 본문
+function markedBody(text) {
+  const parts = [];
+  let last = 0;
+  for (const m of text.matchAll(FORBIDDEN)) {
+    parts.push(text.slice(last, m.index), h('mark', null, m[0]));
+    last = m.index + m[0].length;
+  }
+  parts.push(text.slice(last));
+  return h('p', { class: 'body' }, parts);
+}
+
+const STATUS_NAME = { DRAFT: '검수 대기', APPROVED: '승인', REJECTED: '반려', FAILED: '자동 검증 실패' };
+
+function perspectiveCard(p, question, onChange) {
+  const card = h('div', { class: 'perspective' });
+  const refresh = onChange || (async () => { await loadQuestions(); });
+
+  const review = async (button, status) => {
+    const ok = await run(button, () => api.patch(`/admin/perspectives/${p.id}/review`, { status }), status === 'APPROVED' ? '승인했습니다.' : '반려했습니다.');
+    if (ok) await refresh();
+  };
+
+  const view = () => {
+    const approve = h('button', { class: 'btn ok small', type: 'button', disabled: p.status === 'APPROVED', onclick: e => review(e.currentTarget, 'APPROVED') }, '승인');
+    const reject = h('button', { class: 'btn bad small', type: 'button', disabled: p.status === 'REJECTED', onclick: e => review(e.currentTarget, 'REJECTED') }, '반려');
+    fill(card,
+      h('div', { class: 'row' },
+        h('strong', null, p.label),
+        h('span', { class: `badge ${p.status}` }, STATUS_NAME[p.status] || p.status),
+        question ? null : h('span', { class: 'muted small' }, p.questionId),
+        h('span', { class: 'spacer' }),
+        approve, reject,
+        h('button', { class: 'btn plain small', type: 'button', onclick: () => fill(card, perspectiveForm(question, p, () => view(), refresh)) }, '고치기'),
+      ),
+      markedBody(p.body),
+      p.verse ? h('p', { class: 'verse' }, p.verse) : null,
+      p.ref ? h('p', { class: 'muted small', style: 'margin:4px 0 0' }, p.ref) : null,
+      autoChecks(p),
+      p.reviewedAt ? h('p', { class: 'muted small', style: 'margin:6px 0 0' }, `검수 ${p.reviewedAt.slice(0, 16).replace('T', ' ')}`) : null,
+    );
+  };
+  view();
+  return card;
+}
+
+function perspectiveForm(question, p, onCancel, onSaved) {
+  const editing = !!p;
+  const listId = `labels-${Math.random().toString(36).slice(2)}`;
+  const label = h('input', { type: 'text', list: listId, value: p?.label ?? '성경', maxlength: 20, required: true });
+  const sortOrder = h('input', { type: 'number', min: 0, value: p?.sortOrder ?? '', placeholder: '자동' });
+  const body = h('textarea', { rows: 5, maxlength: 2000, required: true, placeholder: '설교체·권면체 없이, 충돌하는 가치를 두 개 이상 나란히 둡니다.' }, p?.body ?? '');
+  const verse = h('textarea', { rows: 2, maxlength: 500, placeholder: '개역한글 원문 그대로 (성경 외 관점은 비워도 됨)' }, p?.verse ?? '');
+  const ref = h('input', { type: 'text', value: p?.ref ?? '', maxlength: 100, placeholder: '예: 에베소서 4:15' });
+  const model = h('input', { type: 'text', value: p?.model ?? '', maxlength: 50, placeholder: '사람이 쓰면 비움' });
+  const promptVersion = h('input', { type: 'text', value: p?.promptVersion ?? '', maxlength: 30 });
+  const save = h('button', { class: 'btn', type: 'submit' }, editing ? '저장 (다시 검수 대기)' : '해설 추가 (검수 대기)');
+
+  return h('form', {
+    class: 'stack',
+    style: editing ? '' : 'border-top:1px solid var(--line);padding-top:12px',
+    onsubmit: async e => {
+      e.preventDefault();
+      const payload = {
+        label: label.value.trim(), body: body.value.trim(),
+        verse: verse.value.trim() || null, ref: ref.value.trim() || null,
+        sortOrder: sortOrder.value === '' ? null : Number(sortOrder.value),
+        model: model.value.trim() || null, promptVersion: promptVersion.value.trim() || null,
+      };
+      const ok = await run(save, () => editing
+        ? api.put(`/admin/perspectives/${p.id}`, payload)
+        : api.post(`/admin/questions/${encodeURIComponent(question.id)}/perspectives`, payload), '저장했습니다.');
+      if (ok) await (onSaved ? onSaved() : loadQuestions());
+    },
+  },
+    editing ? null : h('h3', null, '해설 추가'),
+    h('datalist', { id: listId }, LABELS.map(l => h('option', { value: l }))),
+    h('div', { class: 'fields-2' },
+      h('label', { class: 'field' }, h('span', null, '관점'), label),
+      h('label', { class: 'field' }, h('span', null, '순서'), sortOrder),
+    ),
+    h('label', { class: 'field' }, h('span', null, `본문 (권장 ${MAX_BODY}자 이내)`), body),
+    h('label', { class: 'field' }, h('span', null, '인용 구절'), verse),
+    h('label', { class: 'field' }, h('span', null, '출처·장절'), ref),
+    h('div', { class: 'fields-2' },
+      h('label', { class: 'field' }, h('span', null, 'AI 모델'), model),
+      h('label', { class: 'field' }, h('span', null, '프롬프트 버전'), promptVersion),
+    ),
+    h('div', { class: 'row' }, save, editing ? h('button', { class: 'btn plain', type: 'button', onclick: onCancel }, '취소') : null),
+  );
+}
+
+/* ---------- 해설 검수 ---------- */
+
+async function loadReview() {
+  const [list, questions] = await Promise.all([
+    run(null, () => api.get(`/admin/perspectives?status=${state.reviewStatus}`)),
+    state.questions.length ? Promise.resolve(state.questions) : run(null, () => api.get('/admin/questions')),
+  ]);
+  if (!list) return;
+  state.perspectives = list;
+  if (questions) state.questions = questions;
+  renderReview();
+}
+
+function renderReview() {
+  const byId = Object.fromEntries(state.questions.map(q => [q.id, q]));
+  const filter = h('select', { style: 'width:auto', onchange: e => { state.reviewStatus = e.target.value; loadReview(); } },
+    Object.entries(STATUS_NAME).map(([value, name]) => h('option', { value, selected: value === state.reviewStatus }, name)));
+
+  fill(app,
+    h('div', { class: 'row', style: 'margin-bottom:16px' },
+      h('h2', null, '해설 검수'),
+      h('span', { class: 'muted small' }, '하루 한 건, 출처와 대조한 뒤 승인합니다 (docs/PLAN.md 5.3)'),
+      h('span', { class: 'spacer' }), filter,
+    ),
+    state.perspectives.length
+      ? h('div', { class: 'stack' }, state.perspectives.map(p => {
+          const q = byId[p.questionId];
+          return h('div', { class: 'card stack' },
+            h('div', null,
+              h('div', { class: 'muted small' }, `${q?.date ?? ''} · ${p.questionId}`),
+              h('h3', null, q?.title ?? p.questionId),
+              q ? h('p', { class: 'small', style: 'margin:4px 0 0;color:var(--sub)' }, q.body) : null,
+              q ? h('ol', { class: 'small', style: 'margin:6px 0 0;padding-left:20px;color:var(--sub)', start: 0 }, q.choices.map(c => h('li', null, c.text))) : null,
+            ),
+            perspectiveCard(p, null, loadReview),
+          );
+        }))
+      : h('p', { class: 'card empty' }, `${STATUS_NAME[state.reviewStatus]} 해설이 없습니다.`),
+  );
+}
+
+/* ---------- 생각 주제 ---------- */
+
+async function loadTopics() {
+  const list = await run(null, () => api.get('/admin/topics'));
+  if (!list) return;
+  state.topics = list;
+  renderTopics();
+}
+
+function renderTopics() {
+  const checked = state.topics.filter(t => t.checkedOn).length;
+  fill(app,
+    h('div', { class: 'row', style: 'margin-bottom:16px' },
+      h('h2', null, '생각 주제'),
+      h('span', { class: 'muted small' }, `${state.topics.length}개 중 ${checked}개 검증 완료 · 사실 주장마다 서로 다른 출처 두 곳에서 직접 확인한 주제만 노출합니다 (docs/VERIFICATION.md)`),
+    ),
+    state.topics.length
+      ? h('div', { class: 'stack' }, state.topics.map(topicCard))
+      : h('p', { class: 'card empty' }, '주제가 없습니다.'),
+  );
+}
+
+function topicCard(t) {
+  const open = state.openTopicId === t.id;
+  const date = h('input', { type: 'date', value: t.checkedOn ?? today(), style: 'width:auto' });
+
+  const update = async (button, checkedOn) => {
+    const saved = await run(button, () => api.patch(`/admin/topics/${encodeURIComponent(t.id)}/checked`, { checkedOn }), checkedOn ? '검증 완료로 표시했습니다.' : '보류로 되돌렸습니다.');
+    if (saved) { Object.assign(t, saved); renderTopics(); }
+  };
+
+  return h('div', { class: 'card' },
+    h('div', { class: 'row' },
+      h('button', { class: 'btn plain small', type: 'button', 'aria-expanded': open, onclick: () => { state.openTopicId = open ? null : t.id; renderTopics(); } }, open ? '접기' : '펼치기'),
+      h('strong', null, t.title),
+      h('span', { class: 'muted small' }, `${t.id} · ${t.category} · 글 ${t.cards.length}장`),
+      t.checkedOn ? h('span', { class: 'badge checked' }, `검증 ${t.checkedOn}`) : h('span', { class: 'badge pending' }, '보류'),
+      h('span', { class: 'spacer' }),
+      date,
+      h('button', { class: 'btn ok small', type: 'button', onclick: e => update(e.currentTarget, date.value) }, '검증 완료'),
+      t.checkedOn ? h('button', { class: 'btn plain small', type: 'button', onclick: e => update(e.currentTarget, null) }, '보류로') : null,
+    ),
+    open ? h('div', { class: 'grid', style: 'margin-top:12px' },
+      h('div', null, h('div', { class: 'muted small' }, '글'), h('ol', { class: 'cards' }, t.cards.map(c => h('li', null, c)))),
+      h('div', null, h('div', { class: 'muted small' }, '출처'), h('ul', { class: 'cards' }, t.sources.map(s => h('li', null,
+        s.url ? h('a', { href: s.url, target: '_blank', rel: 'noopener noreferrer' }, s.label) : s.label)))),
+    ) : null,
+  );
+}
+
+start();
+</script>
+</body>
+</html>

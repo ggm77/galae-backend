@@ -57,6 +57,9 @@ public class WebSecurityConfig {
                                 "/api/v1/auth/**"
                         ).permitAll()
 
+                        //관리자 페이지(정적 HTML). 페이지는 누구나 받지만, 안에서 부르는 /api/v1/admin/**는 ADMIN만 쓸 수 있다
+                        .requestMatchers(HttpMethod.GET, "/admin", "/admin/", "/admin/**").permitAll()
+
                         //사진은 <img> 태그로 불러오므로 토큰 없이 조회 가능
                         .requestMatchers(HttpMethod.GET, "/api/v1/users/*/photo", "/api/v1/groups/*/photo").permitAll()
 
