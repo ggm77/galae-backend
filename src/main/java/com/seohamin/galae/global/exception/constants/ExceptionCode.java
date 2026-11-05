@@ -22,6 +22,7 @@ public enum ExceptionCode {
     QUESTION_HAS_ANSWERS(HttpStatus.BAD_REQUEST, "이미 답변이 있는 질문은 선택지를 바꿀 수 없습니다."),
     INVALID_REVIEW_STATUS(HttpStatus.BAD_REQUEST, "검수 결과는 APPROVED 또는 REJECTED여야 합니다."),
     ADMIN_CANNOT_WITHDRAW(HttpStatus.BAD_REQUEST, "관리자 계정은 탈퇴할 수 없습니다."),
+    CANNOT_BLOCK_SELF(HttpStatus.BAD_REQUEST, "자기 자신은 차단할 수 없습니다."),
 
     //401
     AUTHENTICATION_ERROR(HttpStatus.UNAUTHORIZED, "인증 되지 않았습니다."),

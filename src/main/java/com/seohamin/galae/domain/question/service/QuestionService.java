@@ -2,6 +2,7 @@ package com.seohamin.galae.domain.question.service;
 
 import com.seohamin.galae.domain.answer.entity.Answer;
 import com.seohamin.galae.domain.answer.repository.AnswerRepository;
+import com.seohamin.galae.domain.block.service.BlockService;
 import com.seohamin.galae.domain.question.dto.*;
 import com.seohamin.galae.domain.question.entity.Question;
 import com.seohamin.galae.domain.question.entity.QuestionStatus;
@@ -40,6 +41,7 @@ public class QuestionService {
     private final QuestionImageRepository questionImageRepository;
     private final PerspectiveRepository perspectiveRepository;
     private final AnswerRepository answerRepository;
+    private final BlockService blockService;
     private final TimeProvider timeProvider;
 
     /**
@@ -164,8 +166,9 @@ public class QuestionService {
                 ? myAnswer.getReason()
                 : null;
 
-        // 3) 다른 사람의 이유
-        final Slice<Answer> slice = answerRepository.findOpinions(questionId, choiceId, userId, PageRequest.of(page, size));
+        // 3) 다른 사람의 이유 (내가 차단한 사람 제외)
+        final Slice<Answer> slice = answerRepository.findOpinions(
+                questionId, choiceId, userId, BlockService.forQuery(blockService.blockedIds(userId)), PageRequest.of(page, size));
 
         return new OpinionListResponseDto(
                 questionId,

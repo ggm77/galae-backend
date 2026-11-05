@@ -1,6 +1,7 @@
 package com.seohamin.galae.domain.user.service;
 
 import com.seohamin.galae.domain.achievement.service.AchievementService;
+import com.seohamin.galae.domain.block.repository.UserBlockRepository;
 import com.seohamin.galae.domain.user.dto.UserProfileResponseDto;
 import com.seohamin.galae.domain.user.dto.UserRequestDto;
 import com.seohamin.galae.domain.user.entity.User;
@@ -19,6 +20,7 @@ import java.util.Optional;
 public class UserService {
 
     private final UserRepository userRepository;
+    private final UserBlockRepository userBlockRepository;
     private final AchievementService achievementService;
 
     /**
@@ -29,11 +31,13 @@ public class UserService {
     @Transactional(readOnly = true)
     public UserProfileResponseDto getProfile(final Long targetUserId, final Long viewerId) {
         final User user = findUser(targetUserId);
+        final boolean mine = targetUserId.equals(viewerId);
         return new UserProfileResponseDto(
                 user,
                 achievementService.getStats(targetUserId),
                 achievementService.getAchievements(targetUserId),
-                targetUserId.equals(viewerId)
+                mine,
+                !mine && userBlockRepository.existsByBlockerIdAndBlockedId(viewerId, targetUserId)
         );
     }
 

@@ -1,6 +1,7 @@
 package com.seohamin.galae.domain.group.service.message;
 
 import com.seohamin.galae.domain.answer.repository.AnswerRepository;
+import com.seohamin.galae.domain.block.service.BlockService;
 import com.seohamin.galae.domain.group.dto.message.GroupMessageListResponseDto;
 import com.seohamin.galae.domain.group.dto.message.GroupMessageRequestDto;
 import com.seohamin.galae.domain.group.entity.GalaeGroup;
@@ -18,6 +19,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Set;
 
 /**
  * 그룹 대화 (질문별)
@@ -31,6 +33,7 @@ public class GroupMessageService {
     private final UserRepository userRepository;
     private final GroupService groupService;
     private final QuestionService questionService;
+    private final BlockService blockService;
 
     /**
      * 질문별 그룹 대화 조회 (증분 폴링)
@@ -56,14 +59,21 @@ public class GroupMessageService {
         // 2) 새 메시지
         final boolean locked = !answerRepository.existsByUserIdAndQuestionId(userId, questionId);
         final List<GroupMessage> messages = groupMessageRepository.findAllByGroupIdAndQuestionIdAfter(groupId, questionId, afterId);
+        //커서는 거르기 전 기준으로 정해야 차단한 사람의 메시지를 매번 다시 받지 않는다
         final long lastMessageId = messages.isEmpty() ? afterId : messages.getLast().getId();
+
+        // 3) 내가 차단한 사람의 메시지는 뺀다
+        final Set<Long> blocked = blockService.blockedIds(userId);
 
         return new GroupMessageListResponseDto(
                 groupId,
                 questionId,
                 locked,
                 groupMessageRepository.countSharedMembers(groupId, questionId),
-                messages.stream().map(m -> new GroupMessageListResponseDto.Item(m, userId, locked)).toList(),
+                messages.stream()
+                        .filter(m -> !blocked.contains(m.getAuthor().getId()))
+                        .map(m -> new GroupMessageListResponseDto.Item(m, userId, locked))
+                        .toList(),
                 lastMessageId
         );
     }

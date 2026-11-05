@@ -27,12 +27,15 @@ public class UserProfileResponseDto {
     //내 프로필에서만 채운다
     private final LocalDate joinedOn;
     private final String role;
+    //다른 사람 프로필에서만: 내가 차단한 사람인지 (내 프로필이면 null)
+    private final Boolean blocked;
 
     public UserProfileResponseDto(
             final User user,
             final UserStats stats,
             final List<AchievementResponseDto> achievements,
-            final boolean mine
+            final boolean mine,
+            final boolean blocked
     ) {
         this.id = user.getId();
         this.handle = user.getHandle();
@@ -44,6 +47,7 @@ public class UserProfileResponseDto {
         this.achievements = achievements;
         this.joinedOn = mine ? user.getJoinedOn() : null;
         this.role = mine ? user.getRole().name() : null;
+        this.blocked = mine ? null : blocked;
     }
 
     @Getter

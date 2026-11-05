@@ -1,6 +1,7 @@
 package com.seohamin.galae.domain.comment.service;
 
 import com.seohamin.galae.domain.achievement.service.AchievementService;
+import com.seohamin.galae.domain.block.service.BlockService;
 import com.seohamin.galae.domain.comment.dto.CommentRequestDto;
 import com.seohamin.galae.domain.comment.dto.CommentResponseDto;
 import com.seohamin.galae.domain.comment.dto.MyCommentResponseDto;
@@ -31,16 +32,21 @@ public class CommentService {
     private final UserRepository userRepository;
     private final FeedService feedService;
     private final AchievementService achievementService;
+    private final BlockService blockService;
 
     /**
      * 주제의 댓글 목록 (원 댓글마다 답글을 묶어서)
+     * 내가 차단한 사람의 댓글·답글은 뺀다. 차단한 사람의 원 댓글은 그 아래 답글과 함께 빠진다
      */
     @Transactional(readOnly = true)
     public List<CommentResponseDto> getComments(final String topicId, final Long userId) {
         feedService.getVisibleTopic(topicId);
 
-        // 1) 모든 댓글과 내가 공감한 댓글
-        final List<Comment> comments = commentRepository.findAllByTopicId(topicId);
+        // 1) 모든 댓글(차단한 사람 제외)과 내가 공감한 댓글
+        final Set<Long> blocked = blockService.blockedIds(userId);
+        final List<Comment> comments = commentRepository.findAllByTopicId(topicId).stream()
+                .filter(c -> !blocked.contains(c.getAuthor().getId()))
+                .toList();
         if (comments.isEmpty()) {
             return List.of();
         }

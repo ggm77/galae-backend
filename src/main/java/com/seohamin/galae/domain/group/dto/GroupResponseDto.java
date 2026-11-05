@@ -8,6 +8,7 @@ import lombok.Getter;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.Set;
 
 /**
  * 그룹 상세 (멤버 화면)
@@ -27,7 +28,12 @@ public class GroupResponseDto {
     private final List<Member> members;
     private final LocalDateTime createdAt;
 
-    public GroupResponseDto(final GalaeGroup group, final List<GroupMember> members, final Long viewerId) {
+    public GroupResponseDto(
+            final GalaeGroup group,
+            final List<GroupMember> members,
+            final Long viewerId,
+            final Set<Long> blockedIds
+    ) {
         this.id = group.getId();
         this.name = group.getName();
         this.description = group.getDescription();
@@ -36,7 +42,7 @@ public class GroupResponseDto {
         this.inviteCode = group.getInviteCode();
         this.ownerId = group.getOwner().getId();
         this.owner = group.isOwnedBy(viewerId);
-        this.members = members.stream().map(m -> new Member(m, group)).toList();
+        this.members = members.stream().map(m -> new Member(m, group, blockedIds.contains(m.getUser().getId()))).toList();
         this.createdAt = group.getCreatedAt();
     }
 
@@ -51,11 +57,14 @@ public class GroupResponseDto {
     public static class Member {
         private final UserSimpleResponseDto user;
         private final Boolean owner;
+        //내가 차단한 멤버인지. 그룹장이 내보낼 수 있도록 목록에서는 빼지 않고 표시만 한다
+        private final Boolean blocked;
         private final LocalDateTime joinedAt;
 
-        public Member(final GroupMember member, final GalaeGroup group) {
+        public Member(final GroupMember member, final GalaeGroup group, final boolean blocked) {
             this.user = new UserSimpleResponseDto(member.getUser());
             this.owner = group.isOwnedBy(member.getUser().getId());
+            this.blocked = blocked;
             this.joinedAt = member.getJoinedAt();
         }
     }

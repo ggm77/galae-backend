@@ -14,6 +14,7 @@
 - **생각 탭**: 검증을 마친 주제를 하루 5개씩 날짜에 따라 순환합니다. 댓글·답글(한 단계)·공감을 지원합니다.
 - **세계수와 열매**: 업적 15개를 서버에서 판정하고, 맺은 날을 저장합니다. 한 번 맺은 열매는 사라지지 않습니다.
 - **나 탭**: 프로필(사진·색·이름·아이디·소개), 선택·연속·댓글 수, 달력용 답변 목록, 내 댓글, 다른 사람 프로필.
+- **차단**: 차단한 사람의 댓글·그룹 메시지·익명 의견을 내 응답에서 매번 걸러 냅니다(한쪽 방향, 상대에게 알리지 않음).
 - **관리자**: 질문 등록·수정, 관점별 해설 등록과 검수(DRAFT → APPROVED/REJECTED), 80% 쏠림 재검토 표시, 생각 주제 검증일 지정.
 
 ## 🛠 기술 스택
@@ -141,6 +142,7 @@ galae:
 | | `PUT·DELETE /comments/{id}/like` | 공감, 공감 취소 |
 | 나 | `GET·PATCH /users/me`, `GET /users/me/achievements`, `GET /users/me/comments` | 프로필, 열매, 내 댓글 |
 | | `GET /users/{id}` | 다른 사람 프로필 |
+| 차단 | `GET·PUT /users/me/blocks`, `PUT·DELETE /users/me/blocks/{userId}` | 차단 목록 조회·전체 교체, 한 명 차단·해제. 댓글·그룹 메시지·익명 의견 응답에서 매번 걸러짐 |
 | 사진 | `GET /users/{id}/photo`, `GET /groups/{id}/photo` | JPEG (토큰 없이, `<img>`용) |
 | | `GET /questions/{id}/image` | 질문 이미지 (공개된 질문만, 토큰 없이). 관리자는 `GET /admin/questions/{id}/image`로 공개 전 미리보기 |
 | 관리자 | `GET·POST /admin/questions`, `PATCH /admin/questions/{id}` | 질문 관리 (ROLE_ADMIN). `image`로 질문 이미지 하나(JPEG·PNG·WebP, 1MB) |

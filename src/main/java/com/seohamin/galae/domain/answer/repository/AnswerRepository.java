@@ -53,17 +53,19 @@ public interface AnswerRepository extends JpaRepository<Answer, Long> {
             """)
     List<Object[]> countByChoice(@Param("questionId") String questionId);
 
-    //선택지 코멘트: 다른 사람이 남긴 이유 (익명, 최신순)
+    //선택지 코멘트: 다른 사람이 남긴 이유 (익명, 최신순). 내가 차단한 사람의 이유는 뺀다
     @Query("""
             select a from Answer a
             where a.question.id = :questionId and a.choice.choiceIndex = :choiceIndex
               and a.reason <> '' and a.user.id <> :userId
+              and a.user.id not in :blockedIds
             order by a.updatedAt desc, a.id desc
             """)
     Slice<Answer> findOpinions(
             @Param("questionId") String questionId,
             @Param("choiceIndex") Integer choiceIndex,
             @Param("userId") Long userId,
+            @Param("blockedIds") Collection<Long> blockedIds,
             Pageable pageable
     );
 

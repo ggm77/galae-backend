@@ -1,6 +1,7 @@
 package com.seohamin.galae.domain.group.service;
 
 import com.seohamin.galae.domain.achievement.service.AchievementService;
+import com.seohamin.galae.domain.block.service.BlockService;
 import com.seohamin.galae.domain.answer.repository.AnswerRepository;
 import com.seohamin.galae.domain.group.dto.GroupJoinRequestDto;
 import com.seohamin.galae.domain.group.dto.GroupRequestDto;
@@ -47,6 +48,7 @@ public class GroupService {
     private final UserRepository userRepository;
     private final QuestionService questionService;
     private final AchievementService achievementService;
+    private final BlockService blockService;
 
     /**
      * 가입한 그룹 목록 (가입순)
@@ -69,8 +71,8 @@ public class GroupService {
             memberCounts.put((Long) row[0], (Long) row[1]);
         }
 
-        // 3) 오늘의 질문을 나눈 멤버
-        final Map<Long, List<UserSimpleResponseDto>> sharedMembers = todaySharedMembers(groupIds);
+        // 3) 오늘의 질문을 나눈 멤버 (내가 차단한 사람 제외)
+        final Map<Long, List<UserSimpleResponseDto>> sharedMembers = todaySharedMembers(groupIds, blockService.blockedIds(userId));
 
         return groups.stream()
                 .map(g -> new GroupSummaryResponseDto(
@@ -88,7 +90,7 @@ public class GroupService {
     @Transactional(readOnly = true)
     public GroupResponseDto getGroup(final Long groupId, final Long userId) {
         final GalaeGroup group = getJoinedGroup(groupId, userId);
-        return new GroupResponseDto(group, groupMemberRepository.findAllWithUserByGroupId(groupId), userId);
+        return new GroupResponseDto(group, groupMemberRepository.findAllWithUserByGroupId(groupId), userId, blockService.blockedIds(userId));
     }
 
     /**
@@ -117,7 +119,7 @@ public class GroupService {
         //개척자 업적
         achievementService.evaluate(userId);
 
-        return new GroupResponseDto(group, groupMemberRepository.findAllWithUserByGroupId(group.getId()), userId);
+        return new GroupResponseDto(group, groupMemberRepository.findAllWithUserByGroupId(group.getId()), userId, blockService.blockedIds(userId));
     }
 
     /**
@@ -141,7 +143,7 @@ public class GroupService {
                 .orElseThrow(() -> new CustomException(ExceptionCode.USER_NOT_EXIST));
         groupMemberRepository.save(GroupMember.builder().group(group).user(user).build());
 
-        return new GroupResponseDto(group, groupMemberRepository.findAllWithUserByGroupId(group.getId()), userId);
+        return new GroupResponseDto(group, groupMemberRepository.findAllWithUserByGroupId(group.getId()), userId, blockService.blockedIds(userId));
     }
 
     /**
@@ -159,7 +161,7 @@ public class GroupService {
             group.updatePhoto(PhotoUtil.decode(groupRequestDto.getPhoto()));
         }
 
-        return new GroupResponseDto(group, groupMemberRepository.findAllWithUserByGroupId(groupId), userId);
+        return new GroupResponseDto(group, groupMemberRepository.findAllWithUserByGroupId(groupId), userId, blockService.blockedIds(userId));
     }
 
     /**
@@ -243,14 +245,14 @@ public class GroupService {
         groupRepository.deleteById(groupId);
     }
 
-    private Map<Long, List<UserSimpleResponseDto>> todaySharedMembers(final List<Long> groupIds) {
+    private Map<Long, List<UserSimpleResponseDto>> todaySharedMembers(final List<Long> groupIds, final Set<Long> blockedIds) {
         final Optional<Question> today = questionService.findTodayQuestion();
         if (today.isEmpty()) {
             return Map.of();
         }
 
         final List<Object[]> rows = groupMessageRepository.findSharedAuthors(groupIds, today.get().getId());
-        final Set<Long> authorIds = rows.stream().map(r -> (Long) r[1]).collect(Collectors.toSet());
+        final Set<Long> authorIds = rows.stream().map(r -> (Long) r[1]).filter(id -> !blockedIds.contains(id)).collect(Collectors.toSet());
         final Map<Long, User> authors = userRepository.findAllById(authorIds).stream()
                 .collect(Collectors.toMap(User::getId, Function.identity()));
 

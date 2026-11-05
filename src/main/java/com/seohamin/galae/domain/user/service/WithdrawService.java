@@ -2,6 +2,7 @@ package com.seohamin.galae.domain.user.service;
 
 import com.seohamin.galae.domain.achievement.repository.UserAchievementRepository;
 import com.seohamin.galae.domain.answer.repository.AnswerRepository;
+import com.seohamin.galae.domain.block.repository.UserBlockRepository;
 import com.seohamin.galae.domain.comment.repository.CommentRepository;
 import com.seohamin.galae.domain.comment.repository.like.CommentLikeRepository;
 import com.seohamin.galae.domain.group.entity.member.GroupMember;
@@ -47,6 +48,7 @@ public class WithdrawService {
     private final CommentRepository commentRepository;
     private final CommentLikeRepository commentLikeRepository;
     private final UserAchievementRepository userAchievementRepository;
+    private final UserBlockRepository userBlockRepository;
 
     @Transactional
     public void withdraw(final WithdrawRequestDto withdrawRequestDto, final Long userId) {
@@ -86,7 +88,10 @@ public class WithdrawService {
             commentRepository.deleteAllByAuthorId(userId);
         }
 
-        // 6) 업적과 유저
+        // 6) 차단 기록 (내가 한 차단, 나를 차단한 기록)
+        userBlockRepository.deleteAllInvolving(userId);
+
+        // 7) 업적과 유저
         userAchievementRepository.deleteAllByUserId(userId);
         userRepository.deleteById(userId);
 

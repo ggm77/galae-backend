@@ -2,7 +2,7 @@
 
 갈래 백엔드의 REST API 명세입니다. 코드(`src/main/java/com/seohamin/galae`) 기준으로 작성했고, 실행 중인 서버의 Swagger UI(`/api/swagger/swagger-ui/index.html`)에서도 확인할 수 있습니다.
 
-- [1. 공통 규칙](#1-공통-규칙)
+- [1. 공통 규칙](#1-공통-규칙) (차단 필터 포함)
 - [2. 인증](#2-인증)
 - [3. 질문](#3-질문)
 - [4. 답변](#4-답변)
@@ -10,7 +10,7 @@
 - [6. 그룹](#6-그룹)
 - [7. 그룹 대화](#7-그룹-대화)
 - [8. 생각 탭 (피드·댓글·공감)](#8-생각-탭-피드댓글공감)
-- [9. 나 (프로필·열매·사진)](#9-나-프로필열매사진)
+- [9. 나 (프로필·열매·사진·차단)](#9-나-프로필열매사진)
 - [10. 관리자](#10-관리자)
 - [11. 헬스체크](#11-헬스체크)
 - [12. 에러 코드](#12-에러-코드)
@@ -78,6 +78,23 @@ http://localhost:8080/api/v1
 ### 질문이 "보인다"는 것
 
 사용자 API에서 질문은 `status = PUBLISHED`이고 공개일이 오늘 이전(오늘 포함)일 때만 보입니다. 공개 전·초안 질문은 `404 QUESTION_NOT_EXIST`로 응답해 존재 여부를 숨깁니다.
+
+---
+
+### 차단 필터
+
+회원이 차단한 사람([9.6](#96-사용자-차단-))이 쓴 글은 그 회원에게 내려주는 응답에서 매번 걸러집니다. 한쪽 방향이라 차단당한 사람의 화면은 바뀌지 않습니다.
+
+| API | 처리 |
+| --- | --- |
+| 3.5 선택지 코멘트 | 차단한 사람의 이유를 뺍니다 (DB에서 걸러 `size`가 맞음) |
+| 6.1 내 그룹 목록 | `todaySharedMembers`에서 뺍니다 |
+| 6.4 그룹 상세 등 GroupDetail | 멤버 목록에는 남기고 `blocked: true`로 표시합니다 (그룹장이 내보낼 수 있도록) |
+| 7.1 그룹 대화 | 차단한 사람의 메시지·나눈 답을 뺍니다 |
+| 8.3 댓글 목록 | 차단한 사람의 댓글·답글을 뺍니다. 원 댓글이 차단한 사람 것이면 그 아래 답글도 함께 빠집니다 |
+| 9.4 다른 사람 프로필 | 볼 수 있고 `blocked: true`로 표시합니다 |
+
+선택 비율·참여 수·`sharedMemberCount`·`commentCount` 같은 집계 숫자는 거르지 않습니다.
 
 ---
 
@@ -168,6 +185,7 @@ http://localhost:8080/api/v1
 | 댓글·답글 | 내 댓글과 답글, 거기 달린 공감을 삭제합니다. **다른 사람이 내 댓글에 단 답글은 지우지 않고 원 댓글로 올립니다**(`parentId: null`). |
 | 공감 | 내가 누른 공감을 삭제하고, 그 댓글의 `likeCount`를 줄입니다. |
 | 열매·프로필·사진 | 삭제. |
+| 차단 | 내가 한 차단과 나를 차단한 기록 모두 삭제. |
 
 - 탈퇴하면 그 계정의 토큰은 만료 전이라도 바로 `401 AUTHENTICATION_ERROR`가 됩니다. 프론트는 저장한 토큰을 지우고 시작 화면으로 보냅니다.
 - 같은 아이디는 탈퇴 뒤 다시 가입할 수 있습니다.
@@ -271,7 +289,7 @@ http://localhost:8080/api/v1
 }
 ```
 
-- `myReason`: 내가 이 선택지를 골랐고 이유를 적었으면 내 이유(맨 위에 보여 줄 용도). 아니면 `null`. 내 이유는 `opinions`에 들어가지 않습니다.
+- `myReason`: 내가 이 선택지를 골랐고 이유를 적었으면 내 이유(맨 위에 보여 줄 용도). 아니면 `null`. 내 이유는 `opinions`에 들어가지 않습니다. 내가 차단한 사람의 이유도 빠집니다.
 
 | 에러 | 상황 |
 | --- | --- |
@@ -460,7 +478,7 @@ http://localhost:8080/api/v1
 ]
 ```
 
-- `todaySharedMembers`: 오늘의 질문([3.2](#32-오늘의-질문-)과 같은 질문)을 이 그룹에 나눈 멤버([UserSimple](#usersimple)).
+- `todaySharedMembers`: 오늘의 질문([3.2](#32-오늘의-질문-)과 같은 질문)을 이 그룹에 나눈 멤버([UserSimple](#usersimple)). 내가 차단한 사람은 빠집니다.
 
 ### 6.2 그룹 만들기 🔑
 
@@ -598,6 +616,7 @@ http://localhost:8080/api/v1
 - `locked`: 내가 이 질문에 아직 답하지 않았으면 `true`. 이때 **남의 메시지**는 `choiceId`·`choiceShortText`·`text`가 `null`입니다(작성자·시각은 보임). 프론트는 흐리게 보여 주고 답하기 버튼을 띄웁니다.
 - `share`: 나누기로 올라간 메시지(선택·이유)면 `true`. 일반 메시지는 `choiceId`가 항상 `null`.
 - `sharedMemberCount`: 이 질문을 이 그룹에 나눈 멤버 수. `after`와 상관없이 전체 기준입니다.
+- 내가 차단한 사람의 메시지는 `messages`에서 빠집니다. `lastMessageId`는 거르기 전 기준이라, 차단한 사람의 메시지만 새로 들어와도 커서가 넘어가 같은 메시지를 다시 받지 않습니다.
 - `lastMessageId`: 다음 폴링의 `after`에 넣을 값. 이번에 받은 마지막 메시지 ID이고, 새 메시지가 없으면 보낸 `after` 그대로, 메시지가 하나도 없으면 `0`입니다.
 
 #### 증분 폴링 사용법
@@ -665,7 +684,7 @@ http://localhost:8080/api/v1
 
 `GET /feed/topics/{topicId}/comments`
 
-원 댓글 오래된 순, 각 원 댓글의 `replies`에 답글이 오래된 순으로 묶여 있습니다. 응답: [Comment](#comment)[]
+원 댓글 오래된 순, 각 원 댓글의 `replies`에 답글이 오래된 순으로 묶여 있습니다. 내가 차단한 사람의 댓글·답글은 빠지고, 차단한 사람의 원 댓글은 그 아래 답글과 함께 빠집니다. 응답: [Comment](#comment)[]
 
 ### 8.4 댓글·답글 남기기 🔑
 
@@ -781,7 +800,7 @@ http://localhost:8080/api/v1
 
 `GET /users/{userId}`
 
-응답: [UserProfile](#userprofile) — 남의 프로필이면 `joinedOn`, `role`이 `null`입니다.
+응답: [UserProfile](#userprofile) — 남의 프로필이면 `joinedOn`, `role`이 `null`이고, `blocked`에 내가 차단했는지가 들어갑니다.
 
 | 에러 | 상황 |
 | --- | --- |
@@ -796,6 +815,47 @@ http://localhost:8080/api/v1
 | 에러 | 상황 |
 | --- | --- |
 | `404 USER_NOT_EXIST` / `404 PHOTO_NOT_EXIST` | 없는 유저 / 사진 없음 |
+
+### 9.6 사용자 차단 🔑
+
+차단 목록은 서버에 저장되고, [차단 필터](#차단-필터)에 적은 API의 응답에서 매번 쓰입니다. 차단은 한쪽 방향이며 상대에게 알리지 않습니다.
+
+#### 차단 목록 조회
+
+`GET /users/me/blocks`
+
+최근에 차단한 순입니다.
+
+```json
+[
+  { "user": { "id": 12, "handle": "mina", "name": "미나", "color": "peach", "photoUrl": null }, "blockedAt": "2026-11-05T17:01:22.123456" }
+]
+```
+
+#### 차단 목록 전체 교체
+
+`PUT /users/me/blocks` → `200 OK`
+
+```json
+{ "userIds": [12, 15] }
+```
+
+보낸 목록이 새 차단 목록이 됩니다. 목록에 없는 기존 차단은 풀리고, 이미 차단한 사람의 `blockedAt`은 그대로입니다. 빈 배열이면 모두 해제합니다. 같은 ID가 여러 번 있으면 한 번으로 봅니다. 최대 1000명. 응답: 위 조회와 같은 목록.
+
+#### 한 명 차단 / 해제
+
+`PUT /users/me/blocks/{userId}` → `204 No Content`
+`DELETE /users/me/blocks/{userId}` → `204 No Content`
+
+여러 번 보내도 결과가 같습니다(이미 차단했거나 차단하지 않은 상태면 그대로).
+
+| 에러 | 상황 |
+| --- | --- |
+| `400 CANNOT_BLOCK_SELF` | 목록에 나 자신이 있음 |
+| `404 USER_NOT_EXIST` | 없는 유저가 있음 (목록 교체는 아무것도 바뀌지 않음) |
+| `400 INVALID_REQUEST` | `userIds` 없음, 1000명 초과, `null` 원소 |
+
+탈퇴하면 그 회원이 한 차단과 그 회원을 차단한 기록이 모두 지워집니다.
 
 ---
 
@@ -1056,6 +1116,7 @@ http://localhost:8080/api/v1
 | 400 | `GROUP_CODE_INVALID` | 초대 코드가 올바르지 않습니다. |
 | 400 | `GROUP_ALREADY_JOINED` | 이미 가입한 그룹입니다. |
 | 400 | `CANNOT_KICK_SELF` | 자기 자신은 내보낼 수 없습니다. |
+| 400 | `CANNOT_BLOCK_SELF` | 자기 자신은 차단할 수 없습니다. |
 | 400 | `EMPTY_MESSAGE` | 내용을 입력해야 합니다. |
 | 400 | `QUESTION_ALREADY_EXIST` | 같은 ID나 날짜의 질문이 이미 존재합니다. |
 | 400 | `QUESTION_HAS_ANSWERS` | 이미 답변이 있는 질문은 선택지를 바꿀 수 없습니다. |
@@ -1122,6 +1183,7 @@ http://localhost:8080/api/v1
 | `achievements` | object[] | [9.3](#93-내-열매-)의 원소와 같음 |
 | `joinedOn` | date \| null | 내 프로필에서만 |
 | `role` | string \| null | `USER` \| `ADMIN`. 내 프로필에서만 |
+| `blocked` | boolean \| null | 남의 프로필에서만: 내가 차단했는지. 내 프로필이면 `null` |
 
 ### QuestionDetail
 
@@ -1167,7 +1229,7 @@ http://localhost:8080/api/v1
 | `inviteCode` | string | 6자리 대문자·숫자 |
 | `ownerId` | long | |
 | `owner` | boolean | 내가 그룹장인지 |
-| `members[]` | `{ user: UserSimple, owner: boolean, joinedAt: datetime }` | |
+| `members[]` | `{ user: UserSimple, owner: boolean, blocked: boolean, joinedAt: datetime }` | `blocked`: 내가 차단한 멤버인지 |
 | `createdAt` | datetime | |
 
 ### Topic
