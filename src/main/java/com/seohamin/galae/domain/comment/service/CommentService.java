@@ -1,5 +1,6 @@
 package com.seohamin.galae.domain.comment.service;
 
+import com.seohamin.galae.domain.achievement.service.AchievementService;
 import com.seohamin.galae.domain.comment.dto.CommentRequestDto;
 import com.seohamin.galae.domain.comment.dto.CommentResponseDto;
 import com.seohamin.galae.domain.comment.dto.MyCommentResponseDto;
@@ -29,6 +30,7 @@ public class CommentService {
     private final CommentLikeRepository commentLikeRepository;
     private final UserRepository userRepository;
     private final FeedService feedService;
+    private final AchievementService achievementService;
 
     /**
      * 주제의 댓글 목록 (원 댓글마다 답글을 묶어서)
@@ -99,6 +101,9 @@ public class CommentService {
                 .parent(parent)
                 .text(text)
                 .build());
+
+        // 4) 말동무, 논객 업적
+        achievementService.evaluate(userId);
 
         return new CommentResponseDto(comment, userId, false, List.of());
     }

@@ -1,5 +1,6 @@
 package com.seohamin.galae.domain.group.service;
 
+import com.seohamin.galae.domain.achievement.service.AchievementService;
 import com.seohamin.galae.domain.answer.repository.AnswerRepository;
 import com.seohamin.galae.domain.group.dto.GroupJoinRequestDto;
 import com.seohamin.galae.domain.group.dto.GroupRequestDto;
@@ -45,6 +46,7 @@ public class GroupService {
     private final AnswerRepository answerRepository;
     private final UserRepository userRepository;
     private final QuestionService questionService;
+    private final AchievementService achievementService;
 
     /**
      * 가입한 그룹 목록 (가입순)
@@ -111,6 +113,9 @@ public class GroupService {
         groupRepository.save(group);
 
         groupMemberRepository.save(GroupMember.builder().group(group).user(user).build());
+
+        //개척자 업적
+        achievementService.evaluate(userId);
 
         return new GroupResponseDto(group, groupMemberRepository.findAllWithUserByGroupId(group.getId()), userId);
     }

@@ -1,5 +1,6 @@
 package com.seohamin.galae.domain.comment.service.like;
 
+import com.seohamin.galae.domain.achievement.service.AchievementService;
 import com.seohamin.galae.domain.comment.dto.like.CommentLikeResponseDto;
 import com.seohamin.galae.domain.comment.entity.Comment;
 import com.seohamin.galae.domain.comment.entity.like.CommentLike;
@@ -26,6 +27,7 @@ public class CommentLikeService {
     private final CommentLikeRepository commentLikeRepository;
     private final UserRepository userRepository;
     private final FeedService feedService;
+    private final AchievementService achievementService;
 
     @Transactional
     public CommentLikeResponseDto like(final Long commentId, final Long userId) {
@@ -36,6 +38,9 @@ public class CommentLikeService {
                     .orElseThrow(() -> new CustomException(ExceptionCode.USER_NOT_EXIST));
             commentLikeRepository.save(CommentLike.builder().comment(comment).user(user).build());
             commentRepository.addLikeCount(commentId, 1);
+
+            //경청자 업적
+            achievementService.evaluate(userId);
         }
 
         return response(commentId, true);

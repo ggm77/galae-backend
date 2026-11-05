@@ -1,5 +1,6 @@
 package com.seohamin.galae.domain.group.service.share;
 
+import com.seohamin.galae.domain.achievement.service.AchievementService;
 import com.seohamin.galae.domain.answer.entity.Answer;
 import com.seohamin.galae.domain.answer.repository.AnswerRepository;
 import com.seohamin.galae.domain.group.dto.share.ShareRequestDto;
@@ -35,6 +36,7 @@ public class ShareService {
     private final GroupMemberRepository groupMemberRepository;
     private final GroupMessageRepository groupMessageRepository;
     private final QuestionService questionService;
+    private final AchievementService achievementService;
 
     /**
      * 나누기 상태 조회
@@ -82,6 +84,9 @@ public class ShareService {
 
         // 4) 보냈으니 초안은 비운다
         answer.clearShareDraft();
+
+        // 5) 길동무, 동반자 업적
+        achievementService.evaluate(userId);
 
         return toResponse(answer, List.copyOf(sent));
     }

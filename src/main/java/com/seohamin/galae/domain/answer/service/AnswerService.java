@@ -1,5 +1,6 @@
 package com.seohamin.galae.domain.answer.service;
 
+import com.seohamin.galae.domain.achievement.service.AchievementService;
 import com.seohamin.galae.domain.answer.dto.AnswerProgressRequestDto;
 import com.seohamin.galae.domain.answer.dto.AnswerRequestDto;
 import com.seohamin.galae.domain.answer.dto.AnswerResponseDto;
@@ -39,6 +40,7 @@ public class AnswerService {
     private final GroupMemberRepository groupMemberRepository;
     private final UserRepository userRepository;
     private final QuestionService questionService;
+    private final AchievementService achievementService;
     private final TimeProvider timeProvider;
 
     /**
@@ -85,6 +87,9 @@ public class AnswerService {
                 .reason(reason)
                 .answeredOn(timeProvider.today())
                 .build());
+
+        // 4) 첫 가지, 여행자, 연속, 답변 수 업적
+        achievementService.evaluate(userId);
 
         return new AnswerResponseDto(answer);
     }
