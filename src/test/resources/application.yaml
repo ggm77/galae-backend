@@ -29,3 +29,10 @@ galae:
   admin:
     handle: admin
     password: admin1234
+
+# 테스트에서는 AiClient를 목으로 바꾸므로 실제로 호출하지 않는다
+bizrouter:
+  base-url: http://localhost:1/v1
+  api-key:
+  model: test/model
+  timeout-seconds: 5

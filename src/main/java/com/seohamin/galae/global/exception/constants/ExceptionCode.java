@@ -43,6 +43,8 @@ public enum ExceptionCode {
     PHOTO_NOT_EXIST(HttpStatus.NOT_FOUND, "사진이 존재하지 않습니다."),
 
     //5xx
+    AI_REQUEST_FAILED(HttpStatus.BAD_GATEWAY, "AI 호출에 실패했습니다."),
+    AI_NOT_CONFIGURED(HttpStatus.SERVICE_UNAVAILABLE, "AI API 키가 설정되어 있지 않습니다."),
     SERVICE_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "현재 서버를 이용할 수 없습니다."),
     INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "서버에서 오류가 발생했습니다.")
     ;

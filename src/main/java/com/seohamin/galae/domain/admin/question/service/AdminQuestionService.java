@@ -110,6 +110,7 @@ public class AdminQuestionService {
                 .body(requestDto.getBody().trim())
                 .verse(requestDto.getVerse())
                 .ref(requestDto.getRef())
+                .openQuestion(requestDto.getOpenQuestion())
                 .sortOrder(Optional.ofNullable(requestDto.getSortOrder()).orElse(question.getPerspectives().size()))
                 .status(PerspectiveStatus.DRAFT)
                 .model(requestDto.getModel())
@@ -132,6 +133,7 @@ public class AdminQuestionService {
                 requestDto.getBody().trim(),
                 requestDto.getVerse(),
                 requestDto.getRef(),
+                requestDto.getOpenQuestion(),
                 Optional.ofNullable(requestDto.getSortOrder()).orElse(perspective.getSortOrder()),
                 requestDto.getModel(),
                 requestDto.getPromptVersion()

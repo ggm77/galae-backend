@@ -1,6 +1,8 @@
 package com.seohamin.galae.support;
 
+import com.seohamin.galae.global.infra.ai.AiClient;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
@@ -28,6 +30,10 @@ public abstract class ApiTestSupport {
 
     @Autowired
     protected JsonMapper jsonMapper;
+
+    //실제 비즈라우터를 부르지 않도록 모든 테스트에서 목으로 바꾼다 (컨텍스트를 하나로 공유하려고 여기 둔다)
+    @MockitoBean
+    protected AiClient aiClient;
 
     /** 새 유저로 가입하고 액세스 토큰을 돌려준다 */
     protected String signup(final String name) throws Exception {

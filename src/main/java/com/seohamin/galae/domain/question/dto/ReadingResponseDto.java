@@ -25,12 +25,15 @@ public class ReadingResponseDto {
         private final String body;
         private final String verse;
         private final String ref;
+        //독자에게 남기는 질문. 없으면 null
+        private final String openQuestion;
 
         public PerspectiveItem(final Perspective perspective) {
             this.label = perspective.getLabel();
             this.body = perspective.getBody();
             this.verse = perspective.getVerse();
             this.ref = perspective.getRef();
+            this.openQuestion = perspective.getOpenQuestion();
         }
     }
 }

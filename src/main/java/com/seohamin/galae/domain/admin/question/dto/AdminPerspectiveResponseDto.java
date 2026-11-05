@@ -15,10 +15,13 @@ public class AdminPerspectiveResponseDto {
     private final String body;
     private final String verse;
     private final String ref;
+    private final String openQuestion;
     private final Integer sortOrder;
     private final PerspectiveStatus status;
     private final String model;
     private final String promptVersion;
+    //AI 생성 근거·검증 결과 (JSON 문자열). 사람이 쓴 해설은 null
+    private final String generationDetail;
     private final Long reviewedBy;
     private final LocalDateTime reviewedAt;
     private final LocalDateTime createdAt;
@@ -30,10 +33,12 @@ public class AdminPerspectiveResponseDto {
         this.body = perspective.getBody();
         this.verse = perspective.getVerse();
         this.ref = perspective.getRef();
+        this.openQuestion = perspective.getOpenQuestion();
         this.sortOrder = perspective.getSortOrder();
         this.status = perspective.getStatus();
         this.model = perspective.getModel();
         this.promptVersion = perspective.getPromptVersion();
+        this.generationDetail = perspective.getGenerationDetail();
         this.reviewedBy = perspective.getReviewedBy();
         this.reviewedAt = perspective.getReviewedAt();
         this.createdAt = perspective.getCreatedAt();

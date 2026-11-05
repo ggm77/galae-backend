@@ -47,6 +47,10 @@ public class Perspective {
     @Column(length = 100, nullable = true)
     private String ref;
 
+    //독자가 스스로 답해야 할 질문 하나 (docs/PLAN.md 5.4 open_question). 결론 대신 질문으로 끝낸다
+    @Column(length = 300, nullable = true)
+    private String openQuestion;
+
     //관점 순서
     @Column(nullable = false)
     private Integer sortOrder;
@@ -61,6 +65,11 @@ public class Perspective {
 
     @Column(length = 30, nullable = true)
     private String promptVersion;
+
+    //AI 생성 근거와 자동 검증 결과 JSON (충돌하는 가치, 선택지별 가장 강한 논거, 실패 사유, 비용 등). 검수자용
+    @Lob
+    @Column(nullable = true)
+    private String generationDetail;
 
     //검수한 관리자 ID
     @Column(nullable = true)
@@ -79,19 +88,23 @@ public class Perspective {
             final String body,
             final String verse,
             final String ref,
+            final String openQuestion,
             final Integer sortOrder,
             final PerspectiveStatus status,
             final String model,
-            final String promptVersion
+            final String promptVersion,
+            final String generationDetail
     ) {
         this.label = label;
         this.body = body;
         this.verse = verse;
         this.ref = ref;
+        this.openQuestion = openQuestion;
         this.sortOrder = sortOrder;
         this.status = status;
         this.model = model;
         this.promptVersion = promptVersion;
+        this.generationDetail = generationDetail;
     }
 
     public void updateQuestion(final Question question) {
@@ -100,12 +113,14 @@ public class Perspective {
 
     /**
      * 내용을 고치면 다시 검수를 받아야 하므로 DRAFT로 돌아간다
+     * AI 생성 근거(generationDetail)는 비교용으로 남겨 둔다
      */
     public void updateContent(
             final String label,
             final String body,
             final String verse,
             final String ref,
+            final String openQuestion,
             final Integer sortOrder,
             final String model,
             final String promptVersion
@@ -114,6 +129,7 @@ public class Perspective {
         this.body = body;
         this.verse = verse;
         this.ref = ref;
+        this.openQuestion = openQuestion;
         this.sortOrder = sortOrder;
         this.model = model;
         this.promptVersion = promptVersion;

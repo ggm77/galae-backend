@@ -25,6 +25,10 @@ public class AdminPerspectiveRequestDto {
     @Size(max = 100)
     private String ref;
 
+    //독자에게 남기는 질문 하나
+    @Size(max = 300)
+    private String openQuestion;
+
     private Integer sortOrder;
 
     @Size(max = 50)
