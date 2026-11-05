@@ -46,8 +46,9 @@ class TopicImageApiTest extends ApiTestSupport {
         final String imageUrl = json(get("/api/v1/feed/topics/p003", user)
                 .andExpect(jsonPath("$.imageUrl").value(startsWith("/api/v1/feed/topics/p003/image?v="))))
                 .get("imageUrl").asString();
+        //다른 테스트가 주제를 더하면 오늘의 5개가 바뀌므로, 피드에 p003이 있을 때만 확인한다
         get("/api/v1/feed", user)
-                .andExpect(jsonPath("$.topics[?(@.id == 'p003')].imageUrl").value(contains(imageUrl)));
+                .andExpect(jsonPath("$.topics[?(@.id == 'p003')].imageUrl").value(org.hamcrest.Matchers.everyItem(org.hamcrest.Matchers.equalTo(imageUrl))));
 
         final byte[] image = get(imageUrl, null)
                 .andExpect(status().isOk())

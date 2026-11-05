@@ -4,6 +4,7 @@ import com.seohamin.galae.domain.admin.topic.dto.AdminTopicRequestDto;
 import com.seohamin.galae.domain.admin.topic.dto.TopicCheckRequestDto;
 import com.seohamin.galae.domain.feed.dto.TopicResponseDto;
 import com.seohamin.galae.domain.feed.entity.Topic;
+import com.seohamin.galae.domain.feed.entity.TopicSource;
 import com.seohamin.galae.domain.feed.entity.image.TopicImage;
 import com.seohamin.galae.domain.feed.repository.TopicRepository;
 import com.seohamin.galae.domain.feed.repository.image.TopicImageRepository;
@@ -15,7 +16,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
 
+/**
+ * 관리자: 생각 탭 주제 추가·수정·검증일·이미지
+ * 새 주제는 보류(검증 전)로 들어가고, 검증일을 지정해야 피드에 나온다 (docs/VERIFICATION.md)
+ */
 @Service
 @RequiredArgsConstructor
 public class AdminTopicService {
@@ -36,35 +42,63 @@ public class AdminTopicService {
                 .toList();
     }
 
+    /**
+     * 주제 추가. 보류(검증 전)로 들어간다
+     */
     @Transactional
-    public TopicResponseDto updateChecked(final String topicId, final TopicCheckRequestDto requestDto) {
-        final Topic topic = findTopic(topicId);
-        topic.updateCheckedOn(requestDto.getCheckedOn());
+    public TopicResponseDto createTopic(final AdminTopicRequestDto requestDto) {
+        if (topicRepository.existsById(requestDto.getId())) {
+            throw new CustomException(ExceptionCode.TOPIC_ALREADY_EXIST);
+        }
+
+        final Topic topic = topicRepository.save(Topic.builder()
+                .id(requestDto.getId())
+                .category(requestDto.getCategory().trim())
+                .title(requestDto.getTitle().trim())
+                .cards(cards(requestDto.getCards()))
+                .sources(sources(requestDto.getSources()))
+                .checkedOn(null)
+                .build());
+
+        if (requestDto.getImage() != null && !requestDto.getImage().isEmpty()) {
+            applyImage(topic, requestDto.getImage());
+        }
+
         return new TopicResponseDto(topic, 0, ADMIN_IMAGE_PATH);
     }
 
     /**
-     * 주제 수정. 지금은 이미지만 (null이면 그대로, 빈 문자열이면 삭제, data URL이면 넣거나 바꿈)
+     * 주제 수정. null인 필드는 그대로
+     * 검증을 마친 주제의 내용(분류·제목·카드·출처)을 고치면 다시 확인해야 하므로 보류로 돌아간다.
+     * 이미지는 사실 주장이 아니라서 바꿔도 검증일을 유지한다
      */
     @Transactional
     public TopicResponseDto updateTopic(final String topicId, final AdminTopicRequestDto requestDto) {
         final Topic topic = findTopic(topicId);
-        final String image = requestDto.getImage();
 
-        if (image != null) {
-            if (image.isEmpty()) {
-                topicImageRepository.findById(topicId).ifPresent(topicImageRepository::delete);
-                topic.markImageUpdated(false);
-            } else {
-                final ImageUtil.DecodedImage decoded = ImageUtil.decode(image, MAX_IMAGE_BYTES);
-                topicImageRepository.findById(topicId).ifPresentOrElse(
-                        existing -> existing.update(decoded.bytes(), decoded.contentType()),
-                        () -> topicImageRepository.save(new TopicImage(topic, decoded.bytes(), decoded.contentType()))
-                );
-                topic.markImageUpdated(true);
-            }
+        Optional.ofNullable(requestDto.getCategory()).map(String::trim).filter(s -> !s.isEmpty()).ifPresent(topic::updateCategory);
+        Optional.ofNullable(requestDto.getTitle()).map(String::trim).filter(s -> !s.isEmpty()).ifPresent(topic::updateTitle);
+        if (requestDto.getCards() != null) {
+            topic.replaceCards(cards(requestDto.getCards()));
+        }
+        if (requestDto.getSources() != null) {
+            topic.replaceSources(sources(requestDto.getSources()));
+        }
+        if (requestDto.changesContent()) {
+            topic.updateCheckedOn(null);
         }
 
+        if (requestDto.getImage() != null) {
+            applyImage(topic, requestDto.getImage());
+        }
+
+        return new TopicResponseDto(topic, 0, ADMIN_IMAGE_PATH);
+    }
+
+    @Transactional
+    public TopicResponseDto updateChecked(final String topicId, final TopicCheckRequestDto requestDto) {
+        final Topic topic = findTopic(topicId);
+        topic.updateCheckedOn(requestDto.getCheckedOn());
         return new TopicResponseDto(topic, 0, ADMIN_IMAGE_PATH);
     }
 
@@ -76,6 +110,34 @@ public class AdminTopicService {
         findTopic(topicId);
         return topicImageRepository.findById(topicId)
                 .orElseThrow(() -> new CustomException(ExceptionCode.PHOTO_NOT_EXIST));
+    }
+
+    /**
+     * 빈 문자열이면 삭제, data URL이면 넣거나 바꾼다
+     */
+    private void applyImage(final Topic topic, final String image) {
+        if (image.isEmpty()) {
+            topicImageRepository.findById(topic.getId()).ifPresent(topicImageRepository::delete);
+            topic.markImageUpdated(false);
+            return;
+        }
+
+        final ImageUtil.DecodedImage decoded = ImageUtil.decode(image, MAX_IMAGE_BYTES);
+        topicImageRepository.findById(topic.getId()).ifPresentOrElse(
+                existing -> existing.update(decoded.bytes(), decoded.contentType()),
+                () -> topicImageRepository.save(new TopicImage(topic, decoded.bytes(), decoded.contentType()))
+        );
+        topic.markImageUpdated(true);
+    }
+
+    private static List<String> cards(final List<String> cards) {
+        return cards.stream().map(String::trim).toList();
+    }
+
+    private static List<TopicSource> sources(final List<AdminTopicRequestDto.SourceItem> sources) {
+        return Optional.ofNullable(sources).orElse(List.of()).stream()
+                .map(s -> new TopicSource(s.getLabel().trim(), s.getUrl() == null || s.getUrl().isBlank() ? null : s.getUrl().trim()))
+                .toList();
     }
 
     private Topic findTopic(final String topicId) {

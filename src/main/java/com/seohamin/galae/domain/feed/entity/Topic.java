@@ -79,6 +79,24 @@ public class Topic {
         this.checkedOn = checkedOn;
     }
 
+    public void updateCategory(final String category) {
+        this.category = category;
+    }
+
+    public void updateTitle(final String title) {
+        this.title = title;
+    }
+
+    public void replaceCards(final List<String> cards) {
+        this.cards.clear();
+        this.cards.addAll(cards);
+    }
+
+    public void replaceSources(final List<TopicSource> sources) {
+        this.sources.clear();
+        this.sources.addAll(sources);
+    }
+
     public boolean hasImage() {
         return imageUpdatedAt != null;
     }

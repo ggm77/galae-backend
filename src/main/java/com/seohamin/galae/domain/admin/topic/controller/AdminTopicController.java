@@ -5,10 +5,14 @@ import com.seohamin.galae.domain.admin.topic.dto.TopicCheckRequestDto;
 import com.seohamin.galae.domain.admin.topic.service.AdminTopicService;
 import com.seohamin.galae.domain.feed.dto.TopicResponseDto;
 import com.seohamin.galae.domain.feed.entity.image.TopicImage;
+import com.seohamin.galae.global.validation.Create;
+import com.seohamin.galae.global.validation.Update;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.CacheControl;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -26,11 +30,19 @@ public class AdminTopicController {
         return ResponseEntity.ok(adminTopicService.getTopics());
     }
 
-    //주제 수정 API (이미지)
+    //주제 추가 API (보류로 들어감)
+    @PostMapping("/topics")
+    public ResponseEntity<TopicResponseDto> createTopic(
+            @Validated(Create.class) @RequestBody final AdminTopicRequestDto requestDto
+    ) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(adminTopicService.createTopic(requestDto));
+    }
+
+    //주제 수정 API (분류·제목·카드·출처·이미지). 내용을 고치면 다시 보류
     @PatchMapping("/topics/{topicId}")
     public ResponseEntity<TopicResponseDto> updateTopic(
             @PathVariable("topicId") final String topicId,
-            @RequestBody final AdminTopicRequestDto requestDto
+            @Validated(Update.class) @RequestBody final AdminTopicRequestDto requestDto
     ) {
         return ResponseEntity.ok(adminTopicService.updateTopic(topicId, requestDto));
     }

@@ -20,6 +20,7 @@ public enum ExceptionCode {
     EMPTY_MESSAGE(HttpStatus.BAD_REQUEST, "내용을 입력해야 합니다."),
     QUESTION_ALREADY_EXIST(HttpStatus.BAD_REQUEST, "같은 ID나 날짜의 질문이 이미 존재합니다."),
     QUESTION_HAS_ANSWERS(HttpStatus.BAD_REQUEST, "이미 답변이 있는 질문은 선택지를 바꿀 수 없습니다."),
+    TOPIC_ALREADY_EXIST(HttpStatus.BAD_REQUEST, "같은 ID의 주제가 이미 존재합니다."),
     INVALID_REVIEW_STATUS(HttpStatus.BAD_REQUEST, "검수 결과는 APPROVED 또는 REJECTED여야 합니다."),
     ADMIN_CANNOT_WITHDRAW(HttpStatus.BAD_REQUEST, "관리자 계정은 탈퇴할 수 없습니다."),
     CANNOT_BLOCK_SELF(HttpStatus.BAD_REQUEST, "자기 자신은 차단할 수 없습니다."),
