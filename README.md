@@ -121,6 +121,7 @@ galae:
 | --- | --- | --- |
 | 인증 | `POST /auth/signup`, `POST /auth/login`, `POST /auth/token/refresh` | 가입·로그인·갱신 (토큰 없이) |
 | | `PATCH /users/me/password` | 비밀번호 변경 |
+| | `DELETE /users/me` | 회원 탈퇴 `{password}` (그룹 나가기·답변·댓글·공감·열매 삭제, 관리자는 불가) |
 | 질문 | `GET /questions?query=&filter=all\|unanswered\|answered` | 질문 탭 목록 |
 | | `GET /questions/today`, `GET /questions/{id}` | 오늘의 질문, 질문 상세 (비율 없음) |
 | | `GET /questions/{id}/result` | 선택별 수·비율 🔒 |
@@ -159,4 +160,4 @@ galae:
 
 - AI 해설 생성 파이프라인 (PLAN 5장). 해설 테이블에 `model`, `promptVersion`, 검수 상태 칸은 준비되어 있습니다.
 - 출처 DB(`sources`, PLAN 7.5), 개인 맞춤 해설, 6개월 뒤 같은 질문 다시 묻기, 생각 변화율 측정.
-- 탈퇴, 알림, 신고 기능.
+- 알림, 신고 기능.

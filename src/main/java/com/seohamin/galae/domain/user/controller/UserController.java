@@ -4,7 +4,9 @@ import com.seohamin.galae.domain.achievement.dto.AchievementResponseDto;
 import com.seohamin.galae.domain.achievement.service.AchievementService;
 import com.seohamin.galae.domain.user.dto.UserProfileResponseDto;
 import com.seohamin.galae.domain.user.dto.UserRequestDto;
+import com.seohamin.galae.domain.user.dto.WithdrawRequestDto;
 import com.seohamin.galae.domain.user.service.UserService;
+import com.seohamin.galae.domain.user.service.WithdrawService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.CacheControl;
@@ -22,6 +24,7 @@ import java.util.List;
 public class UserController {
 
     private final UserService userService;
+    private final WithdrawService withdrawService;
     private final AchievementService achievementService;
 
     //내 프로필 API
@@ -39,6 +42,16 @@ public class UserController {
             @Valid @RequestBody final UserRequestDto userRequestDto
     ) {
         return ResponseEntity.ok(userService.updateProfile(userRequestDto, userId));
+    }
+
+    //회원 탈퇴 API (비밀번호 확인). 그룹 나가기·답변·댓글·공감·업적을 함께 지운다
+    @DeleteMapping("/users/me")
+    public ResponseEntity<Void> withdraw(
+            @AuthenticationPrincipal final Long userId,
+            @Valid @RequestBody final WithdrawRequestDto withdrawRequestDto
+    ) {
+        withdrawService.withdraw(withdrawRequestDto, userId);
+        return ResponseEntity.noContent().build();
     }
 
     //내 열매 API

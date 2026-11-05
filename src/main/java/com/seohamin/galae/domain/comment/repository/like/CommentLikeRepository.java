@@ -2,6 +2,7 @@ package com.seohamin.galae.domain.comment.repository.like;
 
 import com.seohamin.galae.domain.comment.entity.like.CommentLike;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -19,4 +20,15 @@ public interface CommentLikeRepository extends JpaRepository<CommentLike, Long> 
 
     //업적 '경청자' 판정용
     long countByUserId(Long userId);
+
+    /* ---------- 회원 탈퇴 ---------- */
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("delete from CommentLike l where l.user.id = :userId")
+    void deleteAllByUserId(@Param("userId") Long userId);
+
+    //지울 댓글에 달린 공감
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("delete from CommentLike l where l.comment.id in :commentIds")
+    void deleteAllByCommentIds(@Param("commentIds") Collection<Long> commentIds);
 }

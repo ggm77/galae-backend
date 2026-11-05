@@ -56,4 +56,9 @@ public interface GroupMessageRepository extends JpaRepository<GroupMessage, Long
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("delete from GroupMessage m where m.group.id = :groupId and m.author.id = :userId")
     void deleteAllByGroupIdAndAuthorId(@Param("groupId") Long groupId, @Param("userId") Long userId);
+
+    //회원 탈퇴: 그룹을 모두 나간 뒤 남은 메시지까지 (안전장치)
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("delete from GroupMessage m where m.author.id = :userId")
+    void deleteAllByAuthorId(@Param("userId") Long userId);
 }

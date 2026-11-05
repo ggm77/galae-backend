@@ -1,5 +1,6 @@
 package com.seohamin.galae.global.auth.filter;
 
+import com.seohamin.galae.domain.user.repository.UserRepository;
 import com.seohamin.galae.global.auth.jwt.JwtProvider;
 import com.seohamin.galae.global.exception.CustomException;
 import io.jsonwebtoken.Claims;
@@ -26,6 +27,7 @@ import java.io.IOException;
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtProvider jwtProvider;
+    private final UserRepository userRepository;
 
     @Override
     protected void doFilterInternal(
@@ -41,9 +43,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 final Claims claims = jwtProvider.parseAccessToken(authorizationHeader.substring(7));
                 final Long userId = Long.parseLong(claims.getSubject());
 
-                final UsernamePasswordAuthenticationToken auth =
-                        new UsernamePasswordAuthenticationToken(userId, null, jwtProvider.getAuthorities(claims));
-                SecurityContextHolder.getContext().setAuthentication(auth);
+                //탈퇴한 유저의 토큰은 만료 전이라도 쓰지 못하게 한다 (JWT는 서버에 저장하지 않아서 따로 확인)
+                if (userRepository.existsById(userId)) {
+                    final UsernamePasswordAuthenticationToken auth =
+                            new UsernamePasswordAuthenticationToken(userId, null, jwtProvider.getAuthorities(claims));
+                    SecurityContextHolder.getContext().setAuthentication(auth);
+                }
             } catch (CustomException | NumberFormatException ex) {
                 //검증 실패시 익명으로 진행
                 SecurityContextHolder.clearContext();

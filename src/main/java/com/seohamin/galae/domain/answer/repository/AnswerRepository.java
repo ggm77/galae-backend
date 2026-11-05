@@ -90,4 +90,14 @@ public interface AnswerRepository extends JpaRepository<Answer, Long> {
               and answer_id in (select a.id from answer a where a.user_id = :userId)
             """, nativeQuery = true)
     void removeGroupFromUserShareDrafts(@Param("groupId") Long groupId, @Param("userId") Long userId);
+
+    /* ---------- 회원 탈퇴 ---------- */
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query(value = "delete from answer_share_draft where answer_id in (select a.id from answer a where a.user_id = :userId)", nativeQuery = true)
+    void deleteShareDraftsByUserId(@Param("userId") Long userId);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("delete from Answer a where a.user.id = :userId")
+    void deleteAllByUserId(@Param("userId") Long userId);
 }
