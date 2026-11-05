@@ -6,6 +6,7 @@ import com.seohamin.galae.domain.answer.dto.AnswerResponseDto;
 import com.seohamin.galae.domain.answer.dto.MyAnswerItemResponseDto;
 import com.seohamin.galae.domain.answer.entity.Answer;
 import com.seohamin.galae.domain.answer.repository.AnswerRepository;
+import com.seohamin.galae.domain.group.repository.member.GroupMemberRepository;
 import com.seohamin.galae.domain.question.entity.Question;
 import com.seohamin.galae.domain.question.entity.choice.Choice;
 import com.seohamin.galae.domain.question.service.QuestionService;
@@ -20,7 +21,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
+import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * 나의 선택과 이유 (docs/APP_FLOW.md 5. 답변과 공유 규칙)
@@ -32,6 +36,7 @@ public class AnswerService {
     private static final long MAX_RANGE_DAYS = 400;
 
     private final AnswerRepository answerRepository;
+    private final GroupMemberRepository groupMemberRepository;
     private final UserRepository userRepository;
     private final QuestionService questionService;
     private final TimeProvider timeProvider;
@@ -109,6 +114,18 @@ public class AnswerService {
 
         if (answerProgressRequestDto.getLastStep() != null) {
             answer.updateLastStep(answerProgressRequestDto.getLastStep());
+        }
+
+        //공유 초안은 가입한 그룹만 고를 수 있다. 보내기 전에는 그룹에 보이지 않는다
+        if (answerProgressRequestDto.getShareDraft() != null) {
+            final Set<Long> requested = new LinkedHashSet<>(answerProgressRequestDto.getShareDraft());
+            if (requested.contains(null)) {
+                throw new CustomException(ExceptionCode.INVALID_REQUEST);
+            }
+            if (!requested.isEmpty() && new HashSet<>(groupMemberRepository.findJoinedGroupIds(userId, requested)).size() != requested.size()) {
+                throw new CustomException(ExceptionCode.GROUP_NOT_JOINED);
+            }
+            answer.updateShareDraft(requested);
         }
 
         return new AnswerResponseDto(answer);

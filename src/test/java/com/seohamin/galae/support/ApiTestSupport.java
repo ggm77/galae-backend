@@ -31,12 +31,19 @@ public abstract class ApiTestSupport {
 
     /** 새 유저로 가입하고 액세스 토큰을 돌려준다 */
     protected String signup(final String name) throws Exception {
+        return signupUser(name).token();
+    }
+
+    /** 새 유저로 가입하고 토큰·ID·아이디를 돌려준다 */
+    protected TestUser signupUser(final String name) throws Exception {
         final String handle = "u" + UUID.randomUUID().toString().replace("-", "").substring(0, 12);
         final JsonNode body = json(perform(post("/api/v1/auth/signup"), null,
                 "{\"handle\":\"" + handle + "\",\"password\":\"password1\",\"name\":\"" + name + "\"}")
                 .andExpect(status().isCreated()));
-        return body.get("accessToken").asString();
+        return new TestUser(body.get("accessToken").asString(), body.get("userId").asLong(), handle);
     }
+
+    protected record TestUser(String token, Long id, String handle) {}
 
     protected String login(final String handle, final String password) throws Exception {
         final JsonNode body = json(perform(post("/api/v1/auth/login"), null,

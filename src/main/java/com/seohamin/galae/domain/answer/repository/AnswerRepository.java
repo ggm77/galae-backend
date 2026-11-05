@@ -4,6 +4,7 @@ import com.seohamin.galae.domain.answer.entity.Answer;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -75,4 +76,18 @@ public interface AnswerRepository extends JpaRepository<Answer, Long> {
     //지난 질문에 답한 수 (답한 날이 질문 날과 다름)
     @Query("select count(a) from Answer a where a.user.id = :userId and a.answeredOn <> a.question.publishDate")
     long countPastAnswers(@Param("userId") Long userId);
+
+    //그룹이 사라지면 모든 사람의 공유 초안에서 뺀다
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query(value = "delete from answer_share_draft where group_id = :groupId", nativeQuery = true)
+    void removeGroupFromAllShareDrafts(@Param("groupId") Long groupId);
+
+    //그룹을 나가면 그 사람의 공유 초안에서 뺀다 (docs/APP_FLOW.md 5-9)
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query(value = """
+            delete from answer_share_draft
+            where group_id = :groupId
+              and answer_id in (select a.id from answer a where a.user_id = :userId)
+            """, nativeQuery = true)
+    void removeGroupFromUserShareDrafts(@Param("groupId") Long groupId, @Param("userId") Long userId);
 }

@@ -87,11 +87,18 @@ public class QuestionService {
      * 오늘의 질문. 오늘 날짜 질문이 없으면 가장 최근 질문
      */
     public QuestionResponseDto getTodayQuestion(final Long userId) {
-        final Question question = questionRepository
-                .findFirstByStatusAndPublishDateLessThanEqualOrderByPublishDateDesc(QuestionStatus.PUBLISHED, timeProvider.today())
+        final Question question = findTodayQuestion()
                 .orElseThrow(() -> new CustomException(ExceptionCode.QUESTION_NOT_EXIST));
 
         return toDetail(question, userId);
+    }
+
+    /**
+     * 오늘의 질문 엔티티. 그룹 카드의 '오늘 나눈 멤버'에서도 쓴다
+     */
+    public Optional<Question> findTodayQuestion() {
+        return questionRepository
+                .findFirstByStatusAndPublishDateLessThanEqualOrderByPublishDateDesc(QuestionStatus.PUBLISHED, timeProvider.today());
     }
 
     /**
