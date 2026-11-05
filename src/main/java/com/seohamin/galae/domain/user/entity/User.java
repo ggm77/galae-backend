@@ -49,9 +49,10 @@ public class User {
     private String color;
 
     //프로필 사진 JPEG (프론트에서 256px로 줄여 보냄)
+    //길이를 주지 않으면 MariaDB에서 tinyblob(255바이트)이 되므로 지정한다 → mediumblob
     @Lob
     @Basic(fetch = FetchType.LAZY)
-    @Column(nullable = true)
+    @Column(nullable = true, length = 1_000_000)
     private byte[] photo;
 
     //사진이 바뀐 시각. 사진 URL의 캐시 무효화용

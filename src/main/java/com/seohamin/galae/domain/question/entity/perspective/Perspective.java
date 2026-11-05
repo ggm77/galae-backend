@@ -67,8 +67,9 @@ public class Perspective {
     private String promptVersion;
 
     //AI 생성 근거와 자동 검증 결과 JSON (충돌하는 가치, 선택지별 가장 강한 논거, 실패 사유, 비용 등). 검수자용
+    //길이를 주지 않으면 MariaDB에서 tinytext(255바이트)가 되므로 지정한다 → mediumtext
     @Lob
-    @Column(nullable = true)
+    @Column(nullable = true, length = 1_000_000)
     private String generationDetail;
 
     //검수한 관리자 ID

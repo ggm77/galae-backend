@@ -40,9 +40,10 @@ public class GalaeGroup {
     private String color;
 
     //그룹 사진 JPEG
+    //길이를 주지 않으면 MariaDB에서 tinyblob(255바이트)이 되므로 지정한다 → mediumblob
     @Lob
     @Basic(fetch = FetchType.LAZY)
-    @Column(nullable = true)
+    @Column(nullable = true, length = 1_000_000)
     private byte[] photo;
 
     @Column(nullable = true)
