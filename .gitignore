@@ -5,6 +5,33 @@ build/
 !**/src/main/**/build/
 !**/src/test/**/build/
 
+### Secrets ###
+# 비밀 값은 환경 변수나 아래 파일에만 둔다 (커밋 금지)
+.env
+.env.*
+!.env.example
+**/src/main/resources/application-secret.yaml
+**/src/main/resources/application-secret.yml
+**/src/main/resources/application-secret.properties
+*.pem
+*.p8
+*.p12
+*.jks
+*.key
+
+### Local data ###
+# 로컬 H2 DB 파일, 로그
+data/
+*.mv.db
+*.trace.db
+*.lock.db
+logs/
+*.log
+
+### OS ###
+.DS_Store
+Thumbs.db
+
 ### STS ###
 .apt_generated
 .classpath
@@ -35,3 +62,6 @@ out/
 
 ### VS Code ###
 .vscode/
+
+### Claude Code ###
+.claude/settings.local.json
