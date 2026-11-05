@@ -91,12 +91,13 @@ class AnswerApiTest extends ApiTestSupport {
         final String token = signup("목록");
         putJson("/api/v1/questions/q033/answer", token, "{\"choiceId\":1}").andExpect(status().isOk());
 
-        get("/api/v1/questions", token).andExpect(jsonPath("$", hasSize(6)));
+        //다른 테스트가 질문을 더할 수 있어서 전체 개수는 고정하지 않는다
+        final int total = json(get("/api/v1/questions", token)).size();
         get("/api/v1/questions?filter=answered", token)
                 .andExpect(jsonPath("$", hasSize(1)))
                 .andExpect(jsonPath("$[0].id").value("q033"))
                 .andExpect(jsonPath("$[0].myAnswer.choiceId").value(1));
-        get("/api/v1/questions?filter=unanswered", token).andExpect(jsonPath("$", hasSize(5)));
+        get("/api/v1/questions?filter=unanswered", token).andExpect(jsonPath("$", hasSize(total - 1)));
         get("/api/v1/questions?query=다툰", token)
                 .andExpect(jsonPath("$", hasSize(1)))
                 .andExpect(jsonPath("$[0].id").value("q036"));

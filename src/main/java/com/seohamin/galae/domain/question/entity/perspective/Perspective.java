@@ -98,12 +98,28 @@ public class Perspective {
         this.question = question;
     }
 
-    public void updateContent(final String label, final String body, final String verse, final String ref, final Integer sortOrder) {
+    /**
+     * 내용을 고치면 다시 검수를 받아야 하므로 DRAFT로 돌아간다
+     */
+    public void updateContent(
+            final String label,
+            final String body,
+            final String verse,
+            final String ref,
+            final Integer sortOrder,
+            final String model,
+            final String promptVersion
+    ) {
         this.label = label;
         this.body = body;
         this.verse = verse;
         this.ref = ref;
         this.sortOrder = sortOrder;
+        this.model = model;
+        this.promptVersion = promptVersion;
+        this.status = PerspectiveStatus.DRAFT;
+        this.reviewedBy = null;
+        this.reviewedAt = null;
     }
 
     public void review(final PerspectiveStatus status, final Long reviewerId) {

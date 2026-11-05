@@ -19,6 +19,8 @@ public enum ExceptionCode {
     CANNOT_KICK_SELF(HttpStatus.BAD_REQUEST, "자기 자신은 내보낼 수 없습니다."),
     EMPTY_MESSAGE(HttpStatus.BAD_REQUEST, "내용을 입력해야 합니다."),
     QUESTION_ALREADY_EXIST(HttpStatus.BAD_REQUEST, "같은 ID나 날짜의 질문이 이미 존재합니다."),
+    QUESTION_HAS_ANSWERS(HttpStatus.BAD_REQUEST, "이미 답변이 있는 질문은 선택지를 바꿀 수 없습니다."),
+    INVALID_REVIEW_STATUS(HttpStatus.BAD_REQUEST, "검수 결과는 APPROVED 또는 REJECTED여야 합니다."),
 
     //401
     AUTHENTICATION_ERROR(HttpStatus.UNAUTHORIZED, "인증 되지 않았습니다."),
