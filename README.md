@@ -113,6 +113,8 @@ galae:
 
 ## 📡 API
 
+요청·응답 필드와 에러까지 담은 전체 명세는 [docs/API.md](docs/API.md)에 있습니다.
+
 모든 API는 `/api/v1` 아래에 있고, 인증이 필요한 API는 `Authorization: Bearer <accessToken>` 헤더를 씁니다. 에러는 `{ timestamp, status, code, message }` 형태이며 `code`로 구분합니다(예: `ANSWER_REQUIRED`, `GROUP_CODE_INVALID`).
 
 | 영역 | 메서드·경로 | 설명 |
