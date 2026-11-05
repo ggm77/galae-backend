@@ -49,6 +49,11 @@ public class Topic {
     @Column(nullable = true)
     private LocalDate checkedOn;
 
+    //주제 이미지가 바뀐 시각. null이면 이미지 없음
+    //이미지 바이트는 피드 조회 때 함께 읽히지 않도록 topic_image 테이블에 따로 둔다 (TopicImage)
+    @Column(nullable = true)
+    private LocalDateTime imageUpdatedAt;
+
     @CreationTimestamp
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -72,5 +77,14 @@ public class Topic {
 
     public void updateCheckedOn(final LocalDate checkedOn) {
         this.checkedOn = checkedOn;
+    }
+
+    public boolean hasImage() {
+        return imageUpdatedAt != null;
+    }
+
+    //이미지를 넣거나 바꾸면 시각을 남기고, 빼면 null
+    public void markImageUpdated(final boolean present) {
+        this.imageUpdatedAt = present ? LocalDateTime.now() : null;
     }
 }

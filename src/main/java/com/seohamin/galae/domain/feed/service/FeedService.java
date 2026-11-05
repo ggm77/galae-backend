@@ -4,6 +4,8 @@ import com.seohamin.galae.domain.comment.repository.CommentRepository;
 import com.seohamin.galae.domain.feed.dto.FeedResponseDto;
 import com.seohamin.galae.domain.feed.dto.TopicResponseDto;
 import com.seohamin.galae.domain.feed.entity.Topic;
+import com.seohamin.galae.domain.feed.entity.image.TopicImage;
+import com.seohamin.galae.domain.feed.repository.image.TopicImageRepository;
 import com.seohamin.galae.domain.feed.repository.TopicRepository;
 import com.seohamin.galae.global.exception.CustomException;
 import com.seohamin.galae.global.exception.constants.ExceptionCode;
@@ -30,17 +32,20 @@ public class FeedService {
     public static final int TOPICS_PER_DAY = 5;
 
     private final TopicRepository topicRepository;
+    private final TopicImageRepository topicImageRepository;
     private final CommentRepository commentRepository;
     private final TimeProvider timeProvider;
     private final boolean includeUnchecked;
 
     public FeedService(
             final TopicRepository topicRepository,
+            final TopicImageRepository topicImageRepository,
             final CommentRepository commentRepository,
             final TimeProvider timeProvider,
             @Value("${galae.feed.include-unchecked:false}") final boolean includeUnchecked
     ) {
         this.topicRepository = topicRepository;
+        this.topicImageRepository = topicImageRepository;
         this.commentRepository = commentRepository;
         this.timeProvider = timeProvider;
         this.includeUnchecked = includeUnchecked;
@@ -76,6 +81,15 @@ public class FeedService {
     public TopicResponseDto getTopic(final String topicId) {
         final Topic topic = getVisibleTopic(topicId);
         return new TopicResponseDto(topic, commentCounts(List.of(topicId)).getOrDefault(topicId, 0L));
+    }
+
+    /**
+     * 주제 이미지 (보이는 주제만. img 태그로 불러오므로 인증 없이)
+     */
+    public TopicImage getImage(final String topicId) {
+        getVisibleTopic(topicId);
+        return topicImageRepository.findById(topicId)
+                .orElseThrow(() -> new CustomException(ExceptionCode.PHOTO_NOT_EXIST));
     }
 
     /**
