@@ -149,7 +149,7 @@ galae:
 | 관리자 | `GET·POST /admin/questions`, `PATCH /admin/questions/{id}` | 질문 관리 (ROLE_ADMIN). `image`로 질문 이미지 하나(JPEG·PNG·WebP, 1MB) |
 | | `POST /admin/questions/{id}/perspectives`, `PUT /admin/perspectives/{id}` | 해설 등록·수정 (DRAFT) |
 | | `GET /admin/perspectives?status=`, `PATCH /admin/perspectives/{id}/review` | 검수 큐, 승인·반려 |
-| | `GET /admin/topics`, `PATCH /admin/topics/{id}/checked` | 주제 검증일 |
+| | `GET·POST /admin/topics`, `PATCH /admin/topics/{id}`, `PATCH /admin/topics/{id}/checked` | 생각 주제 추가·수정(분류·제목·카드·출처·이미지, 내용을 고치면 다시 보류), 검증일 |
 | | `GET /admin/ai`, `POST /admin/questions/{id}/perspectives/generate` | AI 해설 생성 (비즈라우터, 생성→자기비평→자동 검증, DRAFT/FAILED로 저장) |
 
 🔒: 그 질문에 내 답을 남긴 뒤에만 열립니다. 아니면 `403 ANSWER_REQUIRED`.

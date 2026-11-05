@@ -1103,21 +1103,55 @@ http://localhost:8080/api/v1
 | --- | --- |
 | `404 QUESTION_NOT_EXIST` / `404 PHOTO_NOT_EXIST` | 없는 질문 / 이미지 없음 |
 
-### 10.13 주제 수정 (이미지) 👑
+### 10.13 주제 추가·수정 👑
+
+#### 주제 추가
+
+`POST /admin/topics` → `201 Created`
+
+```json
+{
+  "id": "p006",
+  "category": "동일성",
+  "title": "강물의 비유",
+  "cards": ["같은 강물에 두 번 들어갈 수 있을까요?", "물은 쉬지 않고 흘러 바뀝니다.", "그래도 우리는 같은 강이라고 부릅니다."],
+  "sources": [
+    { "label": "Wikipedia, 'Heraclitus'", "url": "https://en.wikipedia.org/wiki/Heraclitus" },
+    { "label": "플라톤, 『크라튈로스』" }
+  ],
+  "image": "data:image/webp;base64,…"
+}
+```
+
+| 필드 | 필수 | 규칙 |
+| --- | --- | --- |
+| `id` | ✓ | 주제 ID. 영문 소문자·숫자·`_`·`-`, 20자 이내. 바꿀 수 없음 |
+| `category` | ✓ | 분류 (동일성, 윤리, 논리 등). 20자 이내 |
+| `title` | ✓ | 100자 이내 |
+| `cards` | ✓ | 한 화면에 넘겨 보는 글 1~10장, 장마다 500자 이내. 빈 장 불가 |
+| `sources` |  | 출처 최대 10개. `label`(200자) 필수, `url`은 선택이며 있으면 `http://`·`https://` 주소(500자) |
+| `image` |  | 주제 이미지 data URL (`data:image/jpeg\|png\|webp;base64,...`, 디코딩 후 1MB 이하) |
+
+새 주제는 **보류(`checkedOn: null`)로 들어가고**, [10.9](#109-주제-검증일-지정-)로 검증일을 지정해야 피드에 나옵니다(VERIFICATION.md 기준). 응답: [Topic](#topic) (`imageUrl`은 관리자용 경로)
+
+#### 주제 수정
 
 `PATCH /admin/topics/{topicId}`
 
-```json
-{ "image": "data:image/webp;base64,…" }
-```
+본문은 주제 추가와 같고 모든 필드가 선택입니다(`id`는 무시). 보낸 필드만 바꾸며, `cards`·`sources`는 보내면 통째로 바꿉니다(`sources: []`면 출처를 모두 지움). `image`는 빼면 그대로, 빈 문자열(`""`)이면 삭제, data URL이면 넣거나 바꿉니다.
 
-`image`는 빼면 그대로, 빈 문자열(`""`)이면 삭제, data URL(`data:image/jpeg|png|webp;base64,...`, 디코딩 후 1MB 이하)이면 넣거나 바꿉니다. 형식은 data URL 타입과 파일 머리를 둘 다 확인합니다. 응답: [Topic](#topic) (`imageUrl`은 관리자용 경로)
+- **검증을 마친 주제의 내용(`category`·`title`·`cards`·`sources`)을 바꾸면 `checkedOn`이 `null`로 돌아가 피드에서 내려갑니다.** 고친 문장으로 다시 확인한 뒤 검증일을 지정해야 합니다(VERIFICATION.md 절차 5).
+- 이미지만 바꾸면 검증일은 그대로입니다.
+
+응답: [Topic](#topic) (`imageUrl`은 관리자용 경로)
 
 | 에러 | 상황 |
 | --- | --- |
-| `404 TOPIC_NOT_EXIST` | 없는 주제 |
-| `400 INVALID_PHOTO` | JPEG·PNG·WebP가 아니거나 내용이 형식과 다름 |
-| `400 TOO_BIG_PHOTO` | 1MB 초과 |
+| `400 TOPIC_ALREADY_EXIST` | 추가: 같은 ID의 주제가 있음 |
+| `400 INVALID_REQUEST` | 필드 규칙 위반 (카드 없음·빈 카드, ID 형식, 출처 주소 형식 등) |
+| `404 TOPIC_NOT_EXIST` | 수정: 없는 주제 |
+| `400 INVALID_PHOTO` | 이미지가 JPEG·PNG·WebP가 아니거나 내용이 형식과 다름 |
+| `400 TOO_BIG_PHOTO` | 이미지 1MB 초과 |
 
 ### 10.14 주제 이미지 미리보기 👑
 
@@ -1157,6 +1191,7 @@ http://localhost:8080/api/v1
 | 400 | `EMPTY_MESSAGE` | 내용을 입력해야 합니다. |
 | 400 | `QUESTION_ALREADY_EXIST` | 같은 ID나 날짜의 질문이 이미 존재합니다. |
 | 400 | `QUESTION_HAS_ANSWERS` | 이미 답변이 있는 질문은 선택지를 바꿀 수 없습니다. |
+| 400 | `TOPIC_ALREADY_EXIST` | 같은 ID의 주제가 이미 존재합니다. |
 | 400 | `INVALID_REVIEW_STATUS` | 검수 결과는 APPROVED 또는 REJECTED여야 합니다. |
 | 400 | `ADMIN_CANNOT_WITHDRAW` | 관리자 계정은 탈퇴할 수 없습니다. |
 | 401 | `AUTHENTICATION_ERROR` | 토큰이 만료되었거나 없습니다. |

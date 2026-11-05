@@ -273,6 +273,8 @@ const state = {
   perspectives: [],
   topics: [],
   openTopicId: null,
+  creatingTopic: false,
+  editingTopicId: null,
 };
 
 const app = document.getElementById('app');
@@ -826,7 +828,10 @@ function renderTopics() {
     h('div', { class: 'row', style: 'margin-bottom:16px' },
       h('h2', null, '생각 주제'),
       h('span', { class: 'muted small' }, `${state.topics.length}개 중 ${checked}개 검증 완료 · 사실 주장마다 서로 다른 출처 두 곳에서 직접 확인한 주제만 노출합니다 (docs/VERIFICATION.md)`),
+      h('span', { class: 'spacer' }),
+      state.creatingTopic ? null : h('button', { class: 'btn', type: 'button', onclick: () => { state.creatingTopic = true; renderTopics(); } }, '새 주제'),
     ),
+    state.creatingTopic ? h('div', { style: 'margin-bottom:16px' }, topicForm(null)) : null,
     state.topics.length
       ? h('div', { class: 'stack' }, state.topics.map(topicCard))
       : h('p', { class: 'card empty' }, '주제가 없습니다.'),
@@ -854,12 +859,125 @@ function topicCard(t) {
       h('button', { class: 'btn ok small', type: 'button', onclick: e => update(e.currentTarget, date.value) }, '검증 완료'),
       t.checkedOn ? h('button', { class: 'btn plain small', type: 'button', onclick: e => update(e.currentTarget, null) }, '보류로') : null,
     ),
-    open ? h('div', { class: 'grid', style: 'margin-top:12px' },
+    open && state.editingTopicId === t.id ? h('div', { style: 'margin-top:12px' }, topicForm(t)) : null,
+    open && state.editingTopicId !== t.id ? h('div', { class: 'grid', style: 'margin-top:12px' },
       h('div', null, h('div', { class: 'muted small' }, '글'), h('ol', { class: 'cards' }, t.cards.map(c => h('li', null, c)))),
       h('div', null, h('div', { class: 'muted small' }, '출처'), h('ul', { class: 'cards' }, t.sources.map(s => h('li', null,
         s.url ? h('a', { href: s.url, target: '_blank', rel: 'noopener noreferrer' }, s.label) : s.label)))),
     ) : null,
+    open && state.editingTopicId !== t.id ? h('div', { class: 'row', style: 'margin-top:8px' },
+      h('button', { class: 'btn plain small', type: 'button', onclick: () => { state.editingTopicId = t.id; renderTopics(); } }, '내용 고치기')) : null,
     open ? topicImageForm(t) : null,
+  );
+}
+
+// 카드 글 줄 (1~10장)
+function topicCardRows(cards) {
+  const box = h('div', { class: 'stack' });
+  const addRow = (text = '') => {
+    const row = h('div', { class: 'row', 'data-card': '' },
+      h('textarea', { rows: 2, maxlength: 500, style: 'flex:1', placeholder: '한 장에 들어갈 짧은 글' }, text),
+      h('button', { class: 'btn plain small', type: 'button', onclick: () => {
+        if (box.querySelectorAll('[data-card]').length > 1) row.remove(); else toast('글은 한 장 이상이어야 합니다.', true);
+      } }, '빼기'),
+    );
+    box.append(row);
+  };
+  (cards.length ? cards : ['']).forEach(addRow);
+  const add = h('button', { class: 'btn plain small', type: 'button', onclick: () => {
+    if (box.querySelectorAll('[data-card]').length < 10) addRow(); else toast('글은 10장까지입니다.', true);
+  } }, '글 더하기');
+  return {
+    el: h('div', { class: 'stack' }, box, add),
+    read: () => [...box.querySelectorAll('[data-card] textarea')].map(t => t.value.trim()),
+  };
+}
+
+// 출처 줄 (0~10개, 주소는 선택)
+function topicSourceRows(sources) {
+  const box = h('div', { class: 'stack' });
+  const addRow = (s = { label: '', url: '' }) => {
+    const row = h('div', { class: 'fields-3', 'data-source': '' },
+      h('input', { type: 'text', maxlength: 200, value: s.label, placeholder: '출처 이름 (예: SEP, \'Zeno\'s Paradoxes\')', 'data-k': 'label' }),
+      h('input', { type: 'text', maxlength: 500, value: s.url ?? '', placeholder: 'https://… (선택)', 'data-k': 'url' }),
+      h('button', { class: 'btn plain small', type: 'button', onclick: () => row.remove() }, '빼기'),
+    );
+    box.append(row);
+  };
+  sources.forEach(addRow);
+  const add = h('button', { class: 'btn plain small', type: 'button', onclick: () => {
+    if (box.querySelectorAll('[data-source]').length < 10) addRow(); else toast('출처는 10개까지입니다.', true);
+  } }, '출처 더하기');
+  return {
+    el: h('div', { class: 'stack' }, box, add),
+    read: () => [...box.querySelectorAll('[data-source]')].map(r => ({
+      label: r.querySelector('[data-k=label]').value.trim(),
+      url: r.querySelector('[data-k=url]').value.trim() || null,
+    })).filter(s => s.label || s.url),
+  };
+}
+
+// 주제 추가(topic = null) / 내용 고치기
+function topicForm(topic) {
+  const creating = !topic;
+  const listId = `categories-${Math.random().toString(36).slice(2)}`;
+  const categories = [...new Set(state.topics.map(x => x.category))];
+  const id = h('input', { type: 'text', value: topic?.id ?? '', placeholder: '예: p006', pattern: '[a-z0-9_-]{1,20}', disabled: !creating, required: true });
+  const category = h('input', { type: 'text', list: listId, value: topic?.category ?? '', maxlength: 20, required: true });
+  const title = h('input', { type: 'text', value: topic?.title ?? '', maxlength: 100, required: true });
+  const cards = topicCardRows(topic?.cards ?? []);
+  const sources = topicSourceRows(topic?.sources ?? []);
+  const image = creating ? imageField(null) : null;
+  const save = h('button', { class: 'btn', type: 'submit' }, creating ? '주제 추가 (보류로 등록)' : (topic.checkedOn ? '저장 (다시 보류로)' : '저장'));
+  const close = () => { state.creatingTopic = false; state.editingTopicId = null; renderTopics(); };
+
+  return h('form', {
+    class: 'card stack',
+    onsubmit: async e => {
+      e.preventDefault();
+      const cardList = cards.read();
+      if (cardList.some(c => !c)) return toast('빈 글이 있습니다. 채우거나 빼 주세요.', true);
+      const sourceList = sources.read();
+      if (sourceList.some(s => !s.label)) return toast('출처 이름이 비어 있습니다.', true);
+      if (sourceList.some(s => s.url && !/^https?:\/\/\S+$/.test(s.url))) return toast('출처 주소는 http:// 또는 https://로 시작해야 합니다.', true);
+
+      let payload;
+      if (creating) {
+        payload = { id: id.value.trim(), category: category.value.trim(), title: title.value.trim(), cards: cardList, sources: sourceList };
+        if (image.value()) payload.image = image.value();
+      } else {
+        // 바뀐 필드만 보낸다 (아무것도 안 바꿨는데 검증일이 지워지지 않도록)
+        payload = {};
+        if (category.value.trim() !== topic.category) payload.category = category.value.trim();
+        if (title.value.trim() !== topic.title) payload.title = title.value.trim();
+        if (JSON.stringify(cardList) !== JSON.stringify(topic.cards)) payload.cards = cardList;
+        if (JSON.stringify(sourceList) !== JSON.stringify(topic.sources.map(s => ({ label: s.label, url: s.url ?? null })))) payload.sources = sourceList;
+        if (!Object.keys(payload).length) return toast('바뀐 내용이 없습니다.', true);
+      }
+
+      const saved = await run(save, () => creating
+        ? api.post('/admin/topics', payload)
+        : api.patch(`/admin/topics/${encodeURIComponent(topic.id)}`, payload),
+        creating ? '주제를 추가했습니다. 검증을 마치면 피드에 나옵니다.' : '저장했습니다.');
+      if (!saved) return;
+      state.creatingTopic = false;
+      state.editingTopicId = null;
+      state.openTopicId = saved.id;
+      await loadTopics();
+    },
+  },
+    h('div', { class: 'row' }, h('h3', null, creating ? '새 주제' : '내용 고치기'),
+      !creating && topic.checkedOn ? h('span', { class: 'badge warn' }, '검증 완료된 주제입니다. 내용을 바꿔 저장하면 보류로 돌아가 다시 검증해야 합니다') : null),
+    h('datalist', { id: listId }, categories.map(c => h('option', { value: c }))),
+    h('div', { class: 'fields-2' },
+      h('label', { class: 'field' }, h('span', null, 'ID (경로에 쓰임, 바꿀 수 없음)'), id),
+      h('label', { class: 'field' }, h('span', null, '분류'), category),
+    ),
+    h('label', { class: 'field' }, h('span', null, '제목 (100자)'), title),
+    h('div', null, h('div', { class: 'small', style: 'color:var(--sub);margin-bottom:6px' }, '글 (한 장 500자, 1~10장. 마지막 장은 나에게 돌아오는 질문으로)'), cards.el),
+    h('div', null, h('div', { class: 'small', style: 'color:var(--sub);margin-bottom:6px' }, '출처 (사실 주장마다 서로 다른 출처 두 곳)'), sources.el),
+    image ? image.el : null,
+    h('div', { class: 'row' }, save, h('button', { class: 'btn plain', type: 'button', onclick: close }, '취소')),
   );
 }
 
