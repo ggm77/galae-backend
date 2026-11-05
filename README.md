@@ -50,22 +50,22 @@ src/main/resources/seed/
 
 ## ▶️ 로컬 실행
 
-`src/main/resources/application.yaml`은 비밀 값이 들어가므로 git에서 제외합니다. 아래 예시로 만들고 실행합니다. 로컬은 H2 파일 DB(`./data/galae`)를 써서 별도 DB 없이 바로 실행됩니다.
+`src/main/resources/application.yaml`은 비밀 값이 들어가므로 git에서 제외합니다. 아래 예시로 만들고 실행합니다. DB는 MariaDB(`galae` 데이터베이스, utf8mb4)를 쓰며, 테이블은 `ddl-auto: update`로 처음 실행할 때 만들어집니다.
 
 ```yaml
 spring:
   application:
     name: galae
   datasource:
-    url: jdbc:h2:file:./data/galae;MODE=MariaDB;DATABASE_TO_LOWER=TRUE;NON_KEYWORDS=VALUE,USER
-    username: sa
-    password:
-  # 운영(MariaDB)
+    driver-class-name: org.mariadb.jdbc.Driver
+    url: jdbc:mariadb://localhost:3306/galae?serverTimezone=Asia/Seoul&characterEncoding=UTF-8
+    username: galae
+    password: <비밀번호>
+  # DB 없이 띄워 볼 때는 H2 파일 DB
   # datasource:
-  #   driver-class-name: org.mariadb.jdbc.Driver
-  #   url: jdbc:mariadb://localhost:3306/galae?serverTimezone=Asia/Seoul&characterEncoding=UTF-8
-  #   username: galae
-  #   password: <비밀번호>
+  #   url: jdbc:h2:file:./data/galae;MODE=MariaDB;DATABASE_TO_LOWER=TRUE;NON_KEYWORDS=VALUE,USER
+  #   username: sa
+  #   password:
   jpa:
     hibernate:
       ddl-auto: update
