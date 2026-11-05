@@ -25,7 +25,8 @@ import java.time.LocalDateTime;
 @Table(
         name = "group_message",
         indexes = {
-                @Index(name = "idx_group_message_group_question", columnList = "group_id, question_id, created_at"),
+                //증분 폴링: group_id, question_id로 좁힌 뒤 id > after
+                @Index(name = "idx_group_message_group_question_id", columnList = "group_id, question_id, id"),
                 @Index(name = "idx_group_message_author_question", columnList = "author_id, question_id")
         }
 )

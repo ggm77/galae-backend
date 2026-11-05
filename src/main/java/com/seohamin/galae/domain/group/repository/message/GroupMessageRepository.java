@@ -11,13 +11,25 @@ import java.util.List;
 
 public interface GroupMessageRepository extends JpaRepository<GroupMessage, Long> {
 
-    //그룹 대화: 질문별 메시지 (오래된 순)
+    //그룹 대화: 질문별 메시지 중 ID가 afterId보다 큰 것 (오래된 순)
+    //증분 폴링의 커서가 메시지 ID라서 ID 순으로 정렬한다. 처음 불러올 때는 afterId = 0
     @Query("""
             select m from GroupMessage m join fetch m.author left join fetch m.choice
-            where m.group.id = :groupId and m.question.id = :questionId
-            order by m.createdAt asc, m.id asc
+            where m.group.id = :groupId and m.question.id = :questionId and m.id > :afterId
+            order by m.id asc
             """)
-    List<GroupMessage> findAllByGroupIdAndQuestionId(@Param("groupId") Long groupId, @Param("questionId") String questionId);
+    List<GroupMessage> findAllByGroupIdAndQuestionIdAfter(
+            @Param("groupId") Long groupId,
+            @Param("questionId") String questionId,
+            @Param("afterId") Long afterId
+    );
+
+    //이 질문을 그룹에 나눈 멤버 수
+    @Query("""
+            select count(distinct m.author.id) from GroupMessage m
+            where m.group.id = :groupId and m.question.id = :questionId and m.choice is not null
+            """)
+    long countSharedMembers(@Param("groupId") Long groupId, @Param("questionId") String questionId);
 
     //내가 이 질문으로 보낸 공유 메시지
     @Query("""

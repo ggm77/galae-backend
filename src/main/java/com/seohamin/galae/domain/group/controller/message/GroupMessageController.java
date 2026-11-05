@@ -17,14 +17,15 @@ public class GroupMessageController {
 
     private final GroupMessageService groupMessageService;
 
-    //질문별 그룹 대화 조회 API
+    //질문별 그룹 대화 조회 API (증분 폴링: after = 이전 응답의 lastMessageId)
     @GetMapping("/groups/{groupId}/questions/{questionId}/messages")
     public ResponseEntity<GroupMessageListResponseDto> getMessages(
             @PathVariable("groupId") final Long groupId,
             @PathVariable("questionId") final String questionId,
+            @RequestParam(value = "after", required = false) final Long after,
             @AuthenticationPrincipal final Long userId
     ) {
-        return ResponseEntity.ok(groupMessageService.getMessages(groupId, questionId, userId));
+        return ResponseEntity.ok(groupMessageService.getMessages(groupId, questionId, after, userId));
     }
 
     //일반 메시지 보내기 API

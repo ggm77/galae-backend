@@ -4,6 +4,7 @@ import com.seohamin.galae.support.ApiTestSupport;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.JsonNode;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -146,6 +147,52 @@ class GroupApiTest extends ApiTestSupport {
 
         delete("/api/v1/groups/" + groupId + "/members/me", owner).andExpect(status().isNoContent());
         get("/api/v1/groups/" + groupId, owner).andExpect(status().isNotFound());
+    }
+
+    @Test
+    void 증분_폴링은_after보다_새로운_메시지만_돌려준다() throws Exception {
+        final String owner = signup("그룹장");
+        final String member = signup("멤버");
+        final long groupId = createGroup(owner, "폴링 모임");
+        postJson("/api/v1/groups/join", member, "{\"code\":\"" + inviteCode(owner, groupId) + "\"}").andExpect(status().isOk());
+        final String url = "/api/v1/groups/" + groupId + "/questions/q034/messages";
+
+        //메시지가 없으면 커서는 0
+        get(url, member)
+                .andExpect(jsonPath("$.messages", hasSize(0)))
+                .andExpect(jsonPath("$.lastMessageId").value(0));
+
+        postJson(url, owner, "{\"text\":\"첫 메시지\"}").andExpect(status().isCreated());
+        postJson(url, owner, "{\"text\":\"둘째 메시지\"}").andExpect(status().isCreated());
+
+        //처음에는 전체
+        final JsonNode first = json(get(url, member)
+                .andExpect(jsonPath("$.messages", hasSize(2)))
+                .andExpect(jsonPath("$.locked").value(true)));
+        final long cursor = first.get("lastMessageId").asLong();
+        assertThat(cursor).isEqualTo(first.get("messages").get(1).get("id").asLong());
+
+        //새 메시지가 없으면 빈 목록, 커서는 그대로
+        get(url + "?after=" + cursor, member)
+                .andExpect(jsonPath("$.messages", hasSize(0)))
+                .andExpect(jsonPath("$.lastMessageId").value(cursor));
+
+        //그룹장이 답하고 나누면 새 공유 메시지 하나만 온다. 멤버는 아직 답하지 않아 내용이 잠겨 있다
+        putJson("/api/v1/questions/q034/answer", owner, "{\"choiceId\":1,\"reason\":\"확인부터\"}").andExpect(status().isOk());
+        postJson("/api/v1/questions/q034/share", owner, "{\"groupIds\":[" + groupId + "]}").andExpect(status().isOk());
+
+        get(url + "?after=" + cursor, member)
+                .andExpect(jsonPath("$.messages", hasSize(1)))
+                .andExpect(jsonPath("$.messages[0].share").value(true))
+                .andExpect(jsonPath("$.messages[0].text").value(nullValue()))
+                .andExpect(jsonPath("$.sharedMemberCount").value(1))
+                .andExpect(jsonPath("$.lastMessageId").value(org.hamcrest.Matchers.greaterThan((int) cursor)));
+
+        get(url + "?after=-1", member).andExpect(status().isBadRequest());
+
+        //나가면 폴링도 막힌다
+        delete("/api/v1/groups/" + groupId + "/members/me", member).andExpect(status().isNoContent());
+        get(url + "?after=" + cursor, member).andExpect(status().isForbidden());
     }
 
     @Test

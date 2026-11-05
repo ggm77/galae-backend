@@ -33,28 +33,38 @@ public class GroupMessageService {
     private final QuestionService questionService;
 
     /**
-     * 질문별 그룹 대화 조회
+     * 질문별 그룹 대화 조회 (증분 폴링)
+     * after가 없으면 전체, 있으면 그 메시지 ID보다 새로운 것만 돌려준다
      * 내가 이 질문에 답하기 전에는 다른 사람의 선택과 글을 숨긴다
      */
     @Transactional(readOnly = true)
-    public GroupMessageListResponseDto getMessages(final Long groupId, final String questionId, final Long userId) {
+    public GroupMessageListResponseDto getMessages(
+            final Long groupId,
+            final String questionId,
+            final Long after,
+            final Long userId
+    ) {
+        if (after != null && after < 0) {
+            throw new CustomException(ExceptionCode.INVALID_REQUEST, "after는 0 이상이어야 합니다.");
+        }
+        final long afterId = after == null ? 0L : after;
+
+        // 1) 가입한 그룹과 공개된 질문인지 확인 (나가거나 내보내지면 폴링도 막힌다)
         groupService.getJoinedGroup(groupId, userId);
         questionService.getVisibleQuestion(questionId);
 
+        // 2) 새 메시지
         final boolean locked = !answerRepository.existsByUserIdAndQuestionId(userId, questionId);
-        final List<GroupMessage> messages = groupMessageRepository.findAllByGroupIdAndQuestionId(groupId, questionId);
-        final long sharedMemberCount = messages.stream()
-                .filter(GroupMessage::isShare)
-                .map(m -> m.getAuthor().getId())
-                .distinct()
-                .count();
+        final List<GroupMessage> messages = groupMessageRepository.findAllByGroupIdAndQuestionIdAfter(groupId, questionId, afterId);
+        final long lastMessageId = messages.isEmpty() ? afterId : messages.getLast().getId();
 
         return new GroupMessageListResponseDto(
                 groupId,
                 questionId,
                 locked,
-                sharedMemberCount,
-                messages.stream().map(m -> new GroupMessageListResponseDto.Item(m, userId, locked)).toList()
+                groupMessageRepository.countSharedMembers(groupId, questionId),
+                messages.stream().map(m -> new GroupMessageListResponseDto.Item(m, userId, locked)).toList(),
+                lastMessageId
         );
     }
 
