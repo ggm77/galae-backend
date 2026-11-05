@@ -114,6 +114,8 @@
   details.gen dt { color: var(--hint); }
   details.gen dd { margin: 0; }
   details.gen ul { margin: 0; padding-left: 18px; }
+  .q-image { display: block; max-width: 100%; max-height: 240px; border: 1px solid var(--line); border-radius: 8px; margin-bottom: 8px; }
+  .q-image[hidden] { display: none; }
   .ai-form { border: 1px solid var(--selected-line); background: var(--selected-bg); border-radius: var(--radius); padding: 14px; }
   .ai-form textarea, .ai-form input { background: #fff; }
   .checks { margin-top: 10px; font-size: 13px; display: flex; gap: 6px; flex-wrap: wrap; }
@@ -418,6 +420,93 @@ function choiceRows(choices, disabled) {
   };
 }
 
+/* ---------- 질문 이미지 ---------- */
+
+const IMAGE_MAX_BYTES = 1024 * 1024;
+const IMAGE_MAX_WIDTH = 1080;
+
+// 관리자용 이미지 주소는 토큰이 필요해서 fetch로 받아 미리보기에 붙인다
+async function loadAuthImage(img, url) {
+  try {
+    const res = await fetch(url, { headers: { Authorization: `Bearer ${auth.access}` } });
+    if (!res.ok) throw new Error();
+    img.src = URL.createObjectURL(await res.blob());
+    img.hidden = false;
+  } catch {
+    img.hidden = true;
+  }
+}
+
+const readAsDataUrl = blob => new Promise((resolve, reject) => {
+  const reader = new FileReader();
+  reader.onload = () => resolve(reader.result);
+  reader.onerror = () => reject(new Error('이미지를 읽지 못했습니다.'));
+  reader.readAsDataURL(blob);
+});
+
+// 가로 1080px보다 크거나 1MB를 넘으면 줄여서 JPEG로 바꾼다
+async function prepareImage(file) {
+  if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) throw new Error('JPEG, PNG, WebP만 올릴 수 있습니다.');
+  const bitmap = await createImageBitmap(file);
+  if (bitmap.width <= IMAGE_MAX_WIDTH && file.size <= IMAGE_MAX_BYTES) return readAsDataUrl(file);
+
+  const scale = Math.min(1, IMAGE_MAX_WIDTH / bitmap.width);
+  const canvas = h('canvas');
+  canvas.width = Math.round(bitmap.width * scale);
+  canvas.height = Math.round(bitmap.height * scale);
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#FFFFFF';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.85));
+  if (!blob || blob.size > IMAGE_MAX_BYTES) throw new Error('이미지를 1MB 이하로 줄이지 못했습니다. 더 작은 이미지를 골라 주세요.');
+  return readAsDataUrl(blob);
+}
+
+// value(): null이면 그대로, ''이면 삭제, data URL이면 새 이미지
+function imageField(currentUrl) {
+  let value = null;
+  const preview = h('img', { class: 'q-image', alt: '질문 이미지 미리보기', hidden: true });
+  const input = h('input', { type: 'file', accept: 'image/jpeg,image/png,image/webp' });
+  const remove = h('button', { class: 'btn plain small', type: 'button', hidden: !currentUrl }, '이미지 빼기');
+  const note = h('span', { class: 'muted small' }, currentUrl ? '' : '이미지 없음');
+
+  if (currentUrl) loadAuthImage(preview, currentUrl);
+
+  input.addEventListener('change', async () => {
+    const file = input.files[0];
+    if (!file) return;
+    try {
+      value = await prepareImage(file);
+      preview.src = value;
+      preview.hidden = false;
+      remove.hidden = false;
+      note.textContent = '저장하면 올라갑니다';
+    } catch (e) {
+      toast(e.message, true);
+      input.value = '';
+    }
+  });
+
+  remove.addEventListener('click', () => {
+    value = currentUrl ? '' : null;
+    input.value = '';
+    preview.hidden = true;
+    preview.removeAttribute('src');
+    remove.hidden = true;
+    note.textContent = currentUrl ? '저장하면 이미지가 빠집니다' : '이미지 없음';
+  });
+
+  return {
+    el: h('div', { class: 'field' },
+      h('span', { class: 'small', style: 'display:block;color:var(--sub);margin-bottom:4px' }, '이미지 (선택, JPEG·PNG·WebP, 1MB 이하. 큰 이미지는 가로 1080px로 줄임)'),
+      preview,
+      h('div', { class: 'row' }, input, remove, note),
+    ),
+    value: () => value,
+  };
+}
+
 function questionEditor(question) {
   const creating = !question;
   const locked = !creating && question.participantCount > 0;
@@ -430,6 +519,7 @@ function questionEditor(question) {
   const title = h('input', { type: 'text', value: question?.title ?? '', maxlength: 100, required: true });
   const body = h('textarea', { maxlength: 1000, required: true, rows: 4 }, question?.body ?? '');
   const choices = choiceRows(question?.choices.map(c => ({ text: c.text, shortText: c.shortText })) ?? [], locked);
+  const image = imageField(question?.imageUrl);
   const save = h('button', { class: 'btn', type: 'submit' }, creating ? '등록' : '저장');
 
   const form = h('form', {
@@ -437,6 +527,7 @@ function questionEditor(question) {
     onsubmit: async e => {
       e.preventDefault();
       const payload = { date: date.value, title: title.value.trim(), body: body.value.trim(), status: status.value };
+      if (image.value() !== null) payload.image = image.value();
       if (!locked) payload.choices = choices.read();
       if (payload.choices && payload.choices.some(c => !c.text || !c.shortText)) return toast('선택지 문장과 짧은 문장을 모두 채워 주세요.', true);
 
@@ -459,6 +550,7 @@ function questionEditor(question) {
     h('label', { class: 'field' }, h('span', null, '상태'), status),
     h('label', { class: 'field' }, h('span', null, '제목 (100자)'), title),
     h('label', { class: 'field' }, h('span', null, '본문 (1000자)'), body),
+    image.el,
     h('div', null,
       h('div', { class: 'row', style: 'margin-bottom:6px' }, h('span', { class: 'small', style: 'color:var(--sub)' }, '선택지'),
         locked ? h('span', { class: 'badge warn' }, '답변이 있어 선택지를 바꿀 수 없습니다') : null),

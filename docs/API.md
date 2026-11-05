@@ -201,6 +201,7 @@ http://localhost:8080/api/v1
     "title": "친구의 거짓말을 알게 됐다면?",
     "body": "…",
     "participantCount": 128,
+    "imageUrl": "/api/v1/questions/q037/image?v=1793865600",
     "myAnswer": {
       "choiceId": 1,
       "completed": true,
@@ -211,7 +212,7 @@ http://localhost:8080/api/v1
 ]
 ```
 
-`myAnswer`는 아직 답하지 않았으면 `null`입니다. `lastStep`도 저장한 적 없으면 `null`일 수 있습니다.
+`myAnswer`는 아직 답하지 않았으면 `null`입니다. `lastStep`도 저장한 적 없으면 `null`일 수 있습니다. `imageUrl`은 질문 이미지가 없으면 `null`입니다([3.7](#37-질문-이미지-)).
 
 ### 3.2 오늘의 질문 🔑
 
@@ -293,6 +294,17 @@ http://localhost:8080/api/v1
 ```
 
 `verse`, `ref`, `openQuestion`은 없으면 `null`입니다. `openQuestion`은 해설 끝에 독자에게 남기는 질문 하나입니다(결론 대신 질문으로 끝냄, PLAN 5.4).
+
+### 3.7 질문 이미지 🔓
+
+`GET /questions/{questionId}/image` → `image/jpeg` \| `image/png` \| `image/webp`
+
+질문당 이미지 하나입니다. `<img>`로 바로 불러오도록 토큰 없이 받지만, **공개된 질문**(공개 상태이고 공개일이 오늘 이전)만 줍니다. 주소는 응답의 `imageUrl`을 그대로 씁니다(서버 기준 상대 경로). `?v=`가 붙어 이미지가 바뀌면 주소가 바뀌므로 `Cache-Control: max-age=2592000, public`(30일)입니다.
+
+| 에러 | 상황 |
+| --- | --- |
+| `404 QUESTION_NOT_EXIST` | 없거나 공개 전인 질문 |
+| `404 PHOTO_NOT_EXIST` | 이미지 없음 |
 
 ---
 
@@ -822,6 +834,7 @@ http://localhost:8080/api/v1
 | `title` | ✓ | 100자 이내 |
 | `body` | ✓ | 1000자 이내 |
 | `status` |  | `DRAFT` \| `PUBLISHED`. 없으면 `DRAFT` |
+| `image` |  | 질문 이미지 data URL (`data:image/jpeg\|png\|webp;base64,...`). 디코딩 후 1MB 이하. 형식은 data URL 타입과 파일 머리를 둘 다 확인합니다 |
 | `choices` | ✓ | 2~3개. `text` 200자, `shortText` 50자 이내 (둘 다 필수). 순서대로 `id` 0, 1, 2 |
 
 응답: [AdminQuestion](#adminquestion)
@@ -829,18 +842,21 @@ http://localhost:8080/api/v1
 | 에러 | 상황 |
 | --- | --- |
 | `400 QUESTION_ALREADY_EXIST` | 같은 ID나 같은 날짜의 질문이 있음 |
+| `400 INVALID_PHOTO` | 이미지가 JPEG·PNG·WebP가 아니거나 내용이 형식과 다름 |
+| `400 TOO_BIG_PHOTO` | 이미지가 1MB 초과 |
 
 ### 10.3 질문 수정 👑
 
 `PATCH /admin/questions/{questionId}`
 
-본문은 10.2와 같고 모든 필드가 선택입니다(`id`는 무시). `choices`를 보내면 통째로 바꿉니다.
+본문은 10.2와 같고 모든 필드가 선택입니다(`id`는 무시). `choices`를 보내면 통째로 바꿉니다. `image`는 빼면 그대로, 빈 문자열(`""`)이면 삭제, data URL이면 넣거나 바꿉니다.
 
 | 에러 | 상황 |
 | --- | --- |
 | `404 QUESTION_NOT_EXIST` | 없는 질문 |
 | `400 QUESTION_ALREADY_EXIST` | 바꾸려는 날짜에 다른 질문이 있음 |
 | `400 QUESTION_HAS_ANSWERS` | 답변이 있는 질문의 선택지를 바꾸려 함 |
+| `400 INVALID_PHOTO` / `400 TOO_BIG_PHOTO` | 10.2와 같음 |
 
 ### 10.4 해설 등록 👑
 
@@ -1006,6 +1022,16 @@ http://localhost:8080/api/v1
 | `502 AI_REQUEST_FAILED` | 비즈라우터 오류·연결 실패·빈 응답 (`message`에 원인) |
 | `503 AI_NOT_CONFIGURED` | 서버에 API 키가 없음 |
 
+### 10.12 질문 이미지 미리보기 👑
+
+`GET /admin/questions/{questionId}/image`
+
+공개 전·초안 질문의 이미지도 줍니다(관리자 페이지 미리보기용). 토큰이 필요해서 `<img>`로 바로 쓸 수 없고 `fetch`로 받아 씁니다. `Cache-Control: no-store`.
+
+| 에러 | 상황 |
+| --- | --- |
+| `404 QUESTION_NOT_EXIST` / `404 PHOTO_NOT_EXIST` | 없는 질문 / 이미지 없음 |
+
 ---
 
 ## 11. 헬스체크
@@ -1105,6 +1131,7 @@ http://localhost:8080/api/v1
 | `date` | date | 공개일 |
 | `title`, `body` | string | |
 | `participantCount` | long | 답한 사람 수 |
+| `imageUrl` | string \| null | 질문 이미지 주소 ([3.7](#37-질문-이미지-)). 없으면 `null` |
 | `choices[]` | `{ id, text, shortText }` | 비율 없음 |
 | `myAnswer` | [Answer](#answer) \| null | 아직 답하지 않았으면 `null` |
 
@@ -1175,6 +1202,7 @@ http://localhost:8080/api/v1
 | --- | --- | --- |
 | `id`, `date`, `title`, `body` | | |
 | `status` | string | `DRAFT` \| `PUBLISHED` |
+| `imageUrl` | string \| null | 관리자용 이미지 주소 ([10.12](#1012-질문-이미지-미리보기-), 토큰 필요). 없으면 `null` |
 | `choices[]` | `{ id, text, shortText }` | |
 | `perspectives` | [AdminPerspective](#adminperspective)[] | 모든 상태 포함 |
 | `participantCount` | long | |

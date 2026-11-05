@@ -142,7 +142,8 @@ galae:
 | 나 | `GET·PATCH /users/me`, `GET /users/me/achievements`, `GET /users/me/comments` | 프로필, 열매, 내 댓글 |
 | | `GET /users/{id}` | 다른 사람 프로필 |
 | 사진 | `GET /users/{id}/photo`, `GET /groups/{id}/photo` | JPEG (토큰 없이, `<img>`용) |
-| 관리자 | `GET·POST /admin/questions`, `PATCH /admin/questions/{id}` | 질문 관리 (ROLE_ADMIN) |
+| | `GET /questions/{id}/image` | 질문 이미지 (공개된 질문만, 토큰 없이). 관리자는 `GET /admin/questions/{id}/image`로 공개 전 미리보기 |
+| 관리자 | `GET·POST /admin/questions`, `PATCH /admin/questions/{id}` | 질문 관리 (ROLE_ADMIN). `image`로 질문 이미지 하나(JPEG·PNG·WebP, 1MB) |
 | | `POST /admin/questions/{id}/perspectives`, `PUT /admin/perspectives/{id}` | 해설 등록·수정 (DRAFT) |
 | | `GET /admin/perspectives?status=`, `PATCH /admin/perspectives/{id}/review` | 검수 큐, 승인·반려 |
 | | `GET /admin/topics`, `PATCH /admin/topics/{id}/checked` | 주제 검증일 |
