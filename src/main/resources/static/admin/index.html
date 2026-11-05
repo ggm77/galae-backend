@@ -848,6 +848,7 @@ function topicCard(t) {
       h('strong', null, t.title),
       h('span', { class: 'muted small' }, `${t.id} · ${t.category} · 글 ${t.cards.length}장`),
       t.checkedOn ? h('span', { class: 'badge checked' }, `검증 ${t.checkedOn}`) : h('span', { class: 'badge pending' }, '보류'),
+      t.imageUrl ? h('span', { class: 'badge' }, '이미지') : null,
       h('span', { class: 'spacer' }),
       date,
       h('button', { class: 'btn ok small', type: 'button', onclick: e => update(e.currentTarget, date.value) }, '검증 완료'),
@@ -858,7 +859,25 @@ function topicCard(t) {
       h('div', null, h('div', { class: 'muted small' }, '출처'), h('ul', { class: 'cards' }, t.sources.map(s => h('li', null,
         s.url ? h('a', { href: s.url, target: '_blank', rel: 'noopener noreferrer' }, s.label) : s.label)))),
     ) : null,
+    open ? topicImageForm(t) : null,
   );
+}
+
+// 주제 이미지 넣기·바꾸기·빼기
+function topicImageForm(t) {
+  const image = imageField(t.imageUrl);
+  const save = h('button', { class: 'btn small', type: 'submit' }, '이미지 저장');
+  return h('form', {
+    class: 'stack',
+    style: 'margin-top:12px;border-top:1px solid var(--line);padding-top:12px',
+    onsubmit: async e => {
+      e.preventDefault();
+      if (image.value() === null) return toast('바뀐 이미지가 없습니다.', true);
+      const saved = await run(save, () => api.patch(`/admin/topics/${encodeURIComponent(t.id)}`, { image: image.value() }),
+        image.value() ? '이미지를 저장했습니다.' : '이미지를 뺐습니다.');
+      if (saved) { Object.assign(t, saved); renderTopics(); }
+    },
+  }, image.el, h('div', { class: 'row' }, save));
 }
 
 start();

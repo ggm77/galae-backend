@@ -138,6 +138,7 @@ galae:
 | | `DELETE /groups/{id}/members/me`, `DELETE /groups/{id}/members/{userId}` | 나가기, 내보내기(그룹장) |
 | | `GET·POST /groups/{id}/questions/{questionId}/messages?after=` | 질문별 그룹 대화 (답하기 전 `locked`). `after`=이전 응답의 `lastMessageId`로 새 메시지만 받는 증분 폴링 |
 | 생각 | `GET /feed`, `GET /feed/topics/{id}` | 오늘의 5개 주제, 주제 하나 |
+| | `GET /feed/topics/{id}/image` | 주제 이미지 (보이는 주제만, 토큰 없이). 관리자는 `PATCH /admin/topics/{id}`로 넣고 `GET /admin/topics/{id}/image`로 미리보기 |
 | | `GET·POST /feed/topics/{id}/comments` | 댓글 목록(답글 묶음), 댓글·답글 `{text, parentId}` |
 | | `PUT·DELETE /comments/{id}/like` | 공감, 공감 취소 |
 | 나 | `GET·PATCH /users/me`, `GET /users/me/achievements`, `GET /users/me/comments` | 프로필, 열매, 내 댓글 |

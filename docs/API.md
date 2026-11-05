@@ -668,7 +668,7 @@ http://localhost:8080/api/v1
 ```json
 {
   "date": "2026-09-25",
-  "topics": [ { "id": "p001", "category": "…", "title": "…", "cards": ["…"], "sources": [ { "label": "…", "url": "https://…" } ], "checkedOn": "2026-09-01", "commentCount": 4 } ]
+  "topics": [ { "id": "p001", "category": "…", "title": "…", "cards": ["…"], "sources": [ { "label": "…", "url": "https://…" } ], "checkedOn": "2026-09-01", "imageUrl": "/api/v1/feed/topics/p001/image?v=1793865600", "commentCount": 4 } ]
 }
 ```
 
@@ -732,6 +732,17 @@ http://localhost:8080/api/v1
   { "id": 41, "topicId": "p001", "topicTitle": "…", "parentId": null, "text": "…", "likeCount": 8, "createdAt": "2026-09-25T09:12:30.123456" }
 ]
 ```
+
+### 8.7 주제 이미지 🔓
+
+`GET /feed/topics/{topicId}/image` → `image/jpeg` \| `image/png` \| `image/webp`
+
+주제당 이미지 하나입니다. `<img>`로 바로 불러오도록 토큰 없이 받지만 **보이는 주제**(검증을 마친 주제)만 줍니다. 주소는 응답의 `imageUrl`을 그대로 씁니다. 캐시 규칙은 [3.7](#37-질문-이미지-)과 같습니다(30일, 바뀌면 `?v=`가 바뀜).
+
+| 에러 | 상황 |
+| --- | --- |
+| `404 TOPIC_NOT_EXIST` | 없거나 보류 중인 주제 |
+| `404 PHOTO_NOT_EXIST` | 이미지 없음 |
 
 ---
 
@@ -983,7 +994,7 @@ http://localhost:8080/api/v1
 
 `GET /admin/topics`
 
-검증 전 포함, ID순. 응답: [Topic](#topic)[] (`commentCount`는 항상 `0`)
+검증 전 포함, ID순. 응답: [Topic](#topic)[] (`commentCount`는 항상 `0`, `imageUrl`은 관리자용 경로 [10.14](#1014-주제-이미지-미리보기-))
 
 ### 10.9 주제 검증일 지정 👑
 
@@ -1091,6 +1102,32 @@ http://localhost:8080/api/v1
 | 에러 | 상황 |
 | --- | --- |
 | `404 QUESTION_NOT_EXIST` / `404 PHOTO_NOT_EXIST` | 없는 질문 / 이미지 없음 |
+
+### 10.13 주제 수정 (이미지) 👑
+
+`PATCH /admin/topics/{topicId}`
+
+```json
+{ "image": "data:image/webp;base64,…" }
+```
+
+`image`는 빼면 그대로, 빈 문자열(`""`)이면 삭제, data URL(`data:image/jpeg|png|webp;base64,...`, 디코딩 후 1MB 이하)이면 넣거나 바꿉니다. 형식은 data URL 타입과 파일 머리를 둘 다 확인합니다. 응답: [Topic](#topic) (`imageUrl`은 관리자용 경로)
+
+| 에러 | 상황 |
+| --- | --- |
+| `404 TOPIC_NOT_EXIST` | 없는 주제 |
+| `400 INVALID_PHOTO` | JPEG·PNG·WebP가 아니거나 내용이 형식과 다름 |
+| `400 TOO_BIG_PHOTO` | 1MB 초과 |
+
+### 10.14 주제 이미지 미리보기 👑
+
+`GET /admin/topics/{topicId}/image`
+
+보류 중인 주제의 이미지도 줍니다(관리자 페이지 미리보기용). `fetch`로 받아 씁니다. `Cache-Control: no-store`.
+
+| 에러 | 상황 |
+| --- | --- |
+| `404 TOPIC_NOT_EXIST` / `404 PHOTO_NOT_EXIST` | 없는 주제 / 이미지 없음 |
 
 ---
 
@@ -1241,6 +1278,7 @@ http://localhost:8080/api/v1
 | `cards` | string[] | 본문 카드 |
 | `sources[]` | `{ label, url }` | 출처 |
 | `checkedOn` | date \| null | 검증일. `null`이면 보류 |
+| `imageUrl` | string \| null | 주제 이미지 주소 ([8.7](#87-주제-이미지-)). 없으면 `null` |
 | `commentCount` | long | |
 
 ### Comment
